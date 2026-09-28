@@ -1,18 +1,17 @@
-
 /* =========================================================
    Spot page: layout only.
-   Colors, fonts and radii all come from the global theme
-   (:root in your main stylesheet), so nothing here defines
-   its own palette. Change the theme and this page follows.
+   Colors, fonts, radii and button styling all come from the
+   global theme (:root and .btn* in your main stylesheet), so
+   nothing here defines its own palette or button look.
    ========================================================= */
 
 .ds-page {
   --ds-offset: 64px; /* space taken by the fixed app header */
 
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 460px;
+  grid-template-columns: minmax(0, 1fr) 300px; /* was 360px — wider chart */
   height: calc(100vh - var(--ds-offset));
-  min-height: 640px;
+  max-height: calc(100vh - var(--ds-offset));
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
@@ -31,21 +30,21 @@
   color: var(--loss);
 }
 
-/* ---------- Left: chart + digits ---------- */
+/* ---------- Left: chart ---------- */
 .ds-left {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 .ds-chart {
   position: relative;
   flex: 1;
-  min-height: 360px;
-  border-bottom: 1px solid var(--border);
+  min-height: 0;
 }
 .ds-plot {
   position: absolute;
-  inset: 14px 88px 14px 0;
+  inset: 14px 80px 14px 0;
 }
 .ds-plot svg {
   width: 100%;
@@ -80,31 +79,31 @@
   top: 14px;
   bottom: 14px;
   right: 0;
-  width: 88px;
+  width: 80px;
 }
 .ds-ylabel {
   position: absolute;
   right: 0;
-  width: 88px;
+  width: 80px;
   text-align: center;
   transform: translateY(-50%);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 .ds-pricetag {
   position: absolute;
   right: 0;
-  width: 88px;
+  width: 80px;
   text-align: center;
   transform: translateY(-50%);
   background: var(--text);
   color: var(--bg);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 4px 0;
+  padding: 3px 0;
   font-variant-numeric: tabular-nums;
   transition: top 0.4s ease;
 }
@@ -114,41 +113,41 @@
   position: absolute;
   top: 8px;
   left: 12px;
-  right: 100px;
+  right: 92px;
   z-index: 2;
   display: flex;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
   pointer-events: none;
 }
 .ds-pill {
   position: relative;
   pointer-events: auto;
-  min-width: 190px;
-  padding: 10px 40px 10px 16px;
+  min-width: 170px;
+  padding: 8px 36px 8px 14px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
 }
 .ds-pill-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text);
 }
 .ds-pill-sub {
   display: flex;
   gap: 8px;
-  margin-top: 3px;
-  font-size: 13px;
+  margin-top: 2px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
 }
 .ds-chevron {
   position: absolute;
-  right: 14px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
@@ -162,195 +161,85 @@
   cursor: pointer;
 }
 
-/* Digit strip */
-.ds-digits {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  height: 140px;
-  padding: 0 8px 14px;
-}
-.ds-digit {
-  position: relative;
-  width: 64px;
-  height: 64px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.1;
-  transition: transform 0.2s ease;
-}
-.ds-digit svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.ds-digit .track {
-  fill: var(--bg);
-  stroke: var(--border);
-  stroke-width: 3;
-}
-.ds-digit .arc {
-  fill: none;
-  stroke: var(--text-muted);
-  stroke-opacity: 0.6;
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-.ds-digit .num {
-  position: relative;
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 700;
-}
-.ds-digit .pct {
-  position: relative;
-  margin-top: 4px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.ds-digit.tone-hi .arc {
-  stroke: var(--gain);
-  stroke-opacity: 1;
-}
-.ds-digit.tone-hi .pct {
-  color: var(--gain);
-}
-.ds-digit.tone-lo .arc {
-  stroke: var(--loss);
-  stroke-opacity: 1;
-}
-.ds-digit.tone-lo .pct {
-  color: var(--loss);
-}
-.ds-digit.current {
-  transform: scale(1.22);
-}
-.ds-digit.current .track {
-  fill: color-mix(in srgb, var(--gain) 14%, var(--bg));
-}
-.ds-digit.current .arc {
-  stroke: var(--gain);
-  stroke-opacity: 1;
-}
-.ds-digit.current::before {
-  content: "";
-  position: absolute;
-  inset: -22px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--gain) 16%, transparent),
-    transparent 70%
-  );
-}
-.ds-digit .ptr {
-  position: absolute;
-  bottom: -26px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 9px solid transparent;
-  border-right: 9px solid transparent;
-  border-bottom: 14px solid var(--gain);
-}
-
 /* ---------- Right: trade panel ---------- */
 .ds-panel {
   display: flex;
   flex-direction: column;
   background: var(--panel);
   border-left: 1px solid var(--border);
+  padding: 14px;
+  gap: 12px;
+  overflow: hidden;
 }
 
+/* Auto / Manual — same size as the site's own buttons (.btn) */
 .ds-modes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  height: 72px;
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
 }
 .ds-mode {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-.ds-mode i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  opacity: 0.6;
-}
-.ds-mode:hover {
-  background: var(--panel-alt);
-  color: var(--text);
-}
-.ds-mode.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 700;
-}
-.ds-mode.active i {
-  background: var(--accent);
-  opacity: 1;
-}
-
-.ds-stake-row {
-  display: grid;
-  grid-template-columns: 72px 1fr 72px 1.3fr;
-  height: 132px;
-  border-bottom: 1px solid var(--border);
-}
-.ds-step {
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 34px;
-  font-weight: 300;
-}
-.ds-step:hover {
-  color: var(--text);
-  background: var(--panel-alt);
-}
-.ds-stake {
-  display: flex;
-  flex-direction: column;
+  flex: 1;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
 }
+.ds-mode i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+.ds-mode.btn-primary i {
+  opacity: 1;
+}
+
+.ds-stake-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.ds-step {
+  width: 44px;
+  flex-shrink: 0;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+}
+.ds-stake {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
 .ds-stake .label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--text-muted);
 }
 .ds-stake .value {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
 }
 .ds-stake .value span {
-  font-size: 22px;
+  font-size: 17px;
   font-weight: 400;
   color: var(--text-muted);
 }
 .ds-stake input {
-  width: 92px;
+  width: 80px;
   background: transparent;
   border: 0;
   outline: 0;
@@ -360,73 +249,57 @@
   appearance: textfield;
   -moz-appearance: textfield;
 }
+/* Faded but clearly legible placeholder ($50 default) */
+.ds-stake input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.75;
+}
 .ds-stake input::-webkit-outer-spin-button,
 .ds-stake input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-.ds-scanner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 0;
-  border-left: 1px solid var(--border);
-  background:
-    linear-gradient(160deg, var(--accent-soft), transparent), var(--panel-alt);
-  color: var(--accent);
-  padding: 0 10px;
-}
-.ds-scanner .title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 700;
-}
-.ds-scanner .sub {
-  font-size: 13px;
-  color: var(--text-muted);
-  text-align: center;
-}
-.ds-scanner:hover {
-  filter: brightness(1.15);
-}
 
 .ds-ticks {
   flex: 1;
-  padding: 24px 24px 16px;
-  border-bottom: 1px solid var(--border);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 .ds-ticks-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  padding: 0 10px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
 }
 .ds-ticks-head .badge {
-  min-width: 48px;
-  padding: 8px 0;
+  min-width: 34px;
+  padding: 4px 0;
   text-align: center;
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0;
 }
 .ds-ticks-row {
   display: flex;
   justify-content: space-between;
-  margin-top: 26px;
+  padding: 0 6px;
+  margin-top: 12px;
 }
 .ds-tick {
-  width: 30px;
-  height: 78px;
+  width: 24px;
+  height: 56px;
   border-radius: 999px;
   border: 2px solid var(--border);
   background: var(--panel-alt);
@@ -445,21 +318,22 @@
   border-color: var(--gain);
   background: color-mix(in srgb, var(--gain) 75%, transparent);
   color: var(--bg);
-  font-size: 17px;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--gain) 45%, transparent);
+  font-size: 14px;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--gain) 45%, transparent);
 }
 
 .ds-session {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 64px;
-  padding: 0 18px;
-  font-size: 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
 }
 .ds-session .dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--text-muted);
   opacity: 0.6;
@@ -471,31 +345,29 @@
 .ds-session .meta {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0.8;
 }
 .ds-session .pnl {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
+/* Even / Odd — sized like the rest of the site's .btn, not oversized */
 .ds-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  height: 128px;
+  gap: 10px;
 }
 .ds-trade {
-  display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 0;
-  color: var(--bg);
-  transition: filter 0.15s ease, transform 0.05s ease;
+  gap: 2px;
+  padding: 11px 16px; /* matches the site's standard .btn padding */
+  color: #fff;
+  border: none;
 }
 .ds-trade.even {
   background: var(--gain);
@@ -505,13 +377,13 @@
 }
 .ds-trade .name {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 15px;
   font-weight: 700;
 }
 .ds-trade .pay {
   font-family: var(--font-mono);
-  font-size: 14px;
-  opacity: 0.7;
+  font-size: 11px;
+  opacity: 0.75;
   font-variant-numeric: tabular-nums;
 }
 .ds-trade:not(:disabled):hover {
@@ -536,50 +408,33 @@
   .ds-page {
     grid-template-columns: 1fr;
     height: auto;
+    max-height: none;
+  }
+  .ds-chart {
+    min-height: 320px;
   }
   .ds-panel {
     border-left: 0;
     border-top: 1px solid var(--border);
   }
-  .ds-digit {
-    width: 44px;
-    height: 44px;
-  }
-  .ds-digit .num {
-    font-size: 14px;
-  }
-  .ds-digit .pct {
-    font-size: 9px;
-    margin-top: 2px;
-  }
-  .ds-digits {
-    height: 110px;
-  }
-  .ds-ticks {
-    min-height: 220px;
-  }
 }
 @media (max-width: 520px) {
   .ds-plot {
-    right: 64px;
+    right: 60px;
   }
   .ds-yaxis,
   .ds-ylabel,
   .ds-pricetag {
-    width: 64px;
+    width: 60px;
   }
   .ds-ylabel,
   .ds-pricetag {
-    font-size: 11px;
-  }
-  .ds-stake-row {
-    grid-template-columns: 48px 1fr 48px 1.2fr;
+    font-size: 10px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ds-pricetag,
-  .ds-digit,
   .ds-tick,
   .ds-trade {
     transition: none;
