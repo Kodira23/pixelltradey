@@ -32,7 +32,7 @@ export default function Landing() {
         <section className="hero" id="platform">
           <div className="hero-content">
             <h1 className="hero-headline-lg">
-              Accumulate wealth by being a smart trader.
+              Accumulate wealth, Become a smart trader.
             </h1>
 
             {/* Mobile-only hero image — cropped/zoomed to fill the box,
