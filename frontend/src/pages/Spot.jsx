@@ -10,13 +10,13 @@ const MARKETS = [
   { id: "R_100", name: "Volatility 100 Index", base: 812, vol: 0.55 },
 ];
 
-const HISTORY = 1000; // ticks used for the digit stats
+const HISTORY = 1000; // ticks kept in memory per market
 const VISIBLE = 60; // ticks drawn on the chart
 const PAYOUT = 1.95; // total return multiplier on a win
 const TICK_MS = 1000;
+const DEFAULT_STAKE = 50;
 const W = 1000;
-const H = 500;
-const RING = 2 * Math.PI * 19;
+const H = 400;
 
 // ---------- Simulated tick feed ----------
 function gauss() {
@@ -66,30 +66,11 @@ function Dice() {
   );
 }
 
-function Sparkle() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M10 4l1.6 4.4L16 10l-4.4 1.6L10 16l-1.6-4.4L4 10l4.4-1.6L10 4z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M18 3v4M16 5h4M18 15v4M16 17h4"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 // ---------- Page ----------
 export default function Spot() {
   const [marketId, setMarketId] = useState(MARKETS[0].id);
   const [mode, setMode] = useState("manual");
-  const [stake, setStake] = useState(700);
+  const [stakeInput, setStakeInput] = useState(""); // empty = show placeholder
   const [ticks, setTicks] = useState(1);
   const [session, setSession] = useState({
     trades: 0,
@@ -97,8 +78,9 @@ export default function Spot() {
     losses: 0,
     pnl: 0,
   });
-  const [scanNote, setScanNote] = useState("");
   const [, rerender] = useReducer((n) => n + 1, 0);
+
+  const stake = stakeInput === "" ? DEFAULT_STAKE : Number(stakeInput) || 0;
 
   const store = useRef(null);
   if (!store.current) {
@@ -106,7 +88,6 @@ export default function Spot() {
   }
   const open = useRef([]);
   const idRef = useRef(0);
-  const scanTimer = useRef(null);
   const cfg = useRef({});
   cfg.current = { mode, stake, ticks, marketId };
 
@@ -157,10 +138,7 @@ export default function Spot() {
       rerender();
     }, TICK_MS);
 
-    return () => {
-      clearInterval(timer);
-      clearTimeout(scanTimer.current);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   // ---------- Derived data ----------
@@ -169,13 +147,6 @@ export default function Spot() {
   const visible = history.slice(-VISIBLE);
   const last = visible[visible.length - 1];
   const change = ((last - visible[0]) / visible[0]) * 100;
-  const digit = lastDigit(last);
-
-  const counts = Array(10).fill(0);
-  history.forEach((p) => (counts[lastDigit(p)] += 1));
-  const pcts = counts.map((c) => (c / history.length) * 100);
-  const maxP = Math.max(...pcts);
-  const minP = Math.min(...pcts);
 
   const lo = Math.min(...visible);
   const hi = Math.max(...visible);
@@ -189,9 +160,9 @@ export default function Spot() {
     .map((p, i) => `${i === 0 ? "M" : "L"}${X(i).toFixed(1)} ${Y(p).toFixed(1)}`)
     .join(" ");
   const area = `${line} L${W} ${H} L0 ${H} Z`;
-  const yLabels = Array.from({ length: 9 }, (_, k) => ({
-    pct: (k / 8) * 100,
-    value: yMax - (k * (yMax - yMin)) / 8,
+  const yLabels = Array.from({ length: 7 }, (_, k) => ({
+    pct: (k / 6) * 100,
+    value: yMax - (k * (yMax - yMin)) / 6,
   }));
 
   const payout = stake * PAYOUT;
@@ -211,29 +182,13 @@ export default function Spot() {
     rerender();
   };
 
-  const scan = () => {
-    let best = null;
-    MARKETS.forEach((m) => {
-      const arr = store.current[m.id];
-      const evenShare =
-        arr.filter((p) => lastDigit(p) % 2 === 0).length / arr.length;
-      const edge = Math.abs(evenShare - 0.5);
-      if (!best || edge > best.edge) best = { m, edge, evenShare };
-    });
-    setMarketId(best.m.id);
-    const side = best.evenShare >= 0.5 ? "Even" : "Odd";
-    const share = Math.max(best.evenShare, 1 - best.evenShare) * 100;
-    setScanNote(`${best.m.name.replace(" Index", "")}: ${side} ${share.toFixed(1)}%`);
-    clearTimeout(scanTimer.current);
-    scanTimer.current = setTimeout(() => setScanNote(""), 6000);
-  };
-
-  const bumpStake = (amount) => setStake((s) => Math.max(1, s + amount));
+  const bumpStake = (amount) =>
+    setStakeInput(String(Math.max(1, stake + amount)));
 
   // ---------- Render ----------
   return (
     <div className="ds-page">
-      {/* ===== Left: chart + digit strip ===== */}
+      {/* ===== Left: chart ===== */}
       <div className="ds-left">
         <div className="ds-chart">
           <div className="ds-topbar">
@@ -317,93 +272,59 @@ export default function Spot() {
             </span>
           </div>
         </div>
-
-        <div className="ds-digits">
-          {pcts.map((p, d) => {
-            const tone = p === maxP ? "hi" : p === minP ? "lo" : "mid";
-            const frac = Math.min(p / 20, 1);
-            const current = d === digit;
-            return (
-              <div
-                key={d}
-                className={`ds-digit tone-${tone} ${current ? "current" : ""}`}
-              >
-                <svg viewBox="0 0 44 44">
-                  <circle className="track" cx="22" cy="22" r="19" />
-                  <circle
-                    className="arc"
-                    cx="22"
-                    cy="22"
-                    r="19"
-                    strokeDasharray={`${frac * RING} ${RING}`}
-                    transform="rotate(-90 22 22)"
-                  />
-                </svg>
-                <span className="num">{d}</span>
-                <span className="pct">{p.toFixed(1)}%</span>
-                {current && <span className="ptr" />}
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       {/* ===== Right: trade panel ===== */}
       <div className="ds-panel">
         <div className="ds-modes">
           <button
-            className={`ds-mode ${mode === "auto" ? "active" : ""}`}
+            className={`btn ${mode === "auto" ? "btn-primary" : "btn-outline"} ds-mode`}
             onClick={() => setMode("auto")}
           >
-            <i /> AUTO
+            <i /> Auto
           </button>
           <button
-            className={`ds-mode ${mode === "manual" ? "active" : ""}`}
+            className={`btn ${mode === "manual" ? "btn-primary" : "btn-outline"} ds-mode`}
             onClick={() => setMode("manual")}
           >
-            <i /> MANUAL
+            <i /> Manual
           </button>
         </div>
 
         <div className="ds-stake-row">
           <button
-            className="ds-step"
+            className="btn btn-outline ds-step"
             onClick={() => bumpStake(-10)}
             aria-label="Decrease stake"
           >
             &minus;
           </button>
           <div className="ds-stake">
-            <span className="label">STAKE</span>
+            <span className="label">Stake</span>
             <div className="value">
               <span>$</span>
               <input
                 type="number"
                 min="1"
-                value={stake}
-                onChange={(e) => setStake(Math.max(0, Number(e.target.value) || 0))}
+                placeholder={String(DEFAULT_STAKE)}
+                value={stakeInput}
+                onChange={(e) => setStakeInput(e.target.value)}
                 aria-label="Stake"
               />
             </div>
           </div>
           <button
-            className="ds-step"
+            className="btn btn-outline ds-step"
             onClick={() => bumpStake(10)}
             aria-label="Increase stake"
           >
             +
           </button>
-          <button className="ds-scanner" onClick={scan}>
-            <span className="title">
-              <Sparkle /> AI Scanner
-            </span>
-            <span className="sub">{scanNote || "Find best market"}</span>
-          </button>
         </div>
 
         <div className="ds-ticks">
           <div className="ds-ticks-head">
-            <span>TICKS</span>
+            <span>Ticks</span>
             <span className="badge">{ticks}</span>
           </div>
           <div className="ds-ticks-row">
@@ -435,7 +356,7 @@ export default function Spot() {
 
         <div className="ds-actions">
           <button
-            className="ds-trade even"
+            className="btn ds-trade even"
             disabled={!canTrade}
             onClick={() => place("even")}
           >
@@ -443,7 +364,7 @@ export default function Spot() {
             <span className="pay">{money(payout)}</span>
           </button>
           <button
-            className="ds-trade odd"
+            className="btn ds-trade odd"
             disabled={!canTrade}
             onClick={() => place("odd")}
           >
