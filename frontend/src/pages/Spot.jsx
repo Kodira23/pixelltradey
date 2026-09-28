@@ -1,4 +1,7 @@
+// src/pages/Spot.jsx
+
 import { useState, useEffect, useReducer, useRef } from "react";
+import { supabase } from "../supabaseClient";
 import "./Spot.css";
 
 // ---------- Config ----------
@@ -8,6 +11,48 @@ const MARKETS = [
   { id: "R_50", name: "Volatility 50 Index", base: 262, vol: 0.09 },
   { id: "R_75", name: "Volatility 75 Index", base: 48210, vol: 4.5 },
   { id: "R_100", name: "Volatility 100 Index", base: 812, vol: 0.55 },
+];
+
+// Each contract type has two mutually exclusive sides. `settle` decides a
+// win given the finished trade (marketId, side, stake, entryPrice) and the
+// price the market landed on when the trade's ticks ran out.
+const CONTRACT_TYPES = [
+  {
+    id: "evenodd",
+    label: "Even/Odd",
+    options: [
+      { key: "even", label: "Even" },
+      { key: "odd", label: "Odd" },
+    ],
+    settle: (trade, finalPrice) => {
+      const isEven = lastDigit(finalPrice) % 2 === 0;
+      return isEven === (trade.side === "even");
+    },
+  },
+  {
+    id: "risefall",
+    label: "Rise/Fall",
+    options: [
+      { key: "rise", label: "Rise" },
+      { key: "fall", label: "Fall" },
+    ],
+    settle: (trade, finalPrice) => {
+      const rose = finalPrice > trade.entryPrice;
+      return rose === (trade.side === "rise");
+    },
+  },
+  {
+    id: "overunder",
+    label: "Over/Under 5",
+    options: [
+      { key: "over", label: "Over 5" },
+      { key: "under", label: "Under 5" },
+    ],
+    settle: (trade, finalPrice) => {
+      const digit = lastDigit(finalPrice);
+      return trade.side === "over" ? digit > 5 : digit < 5;
+    },
+  },
 ];
 
 const HISTORY = 1000; // ticks kept in memory per market
@@ -36,7 +81,9 @@ function seed(m) {
   return arr;
 }
 
-const lastDigit = (price) => Math.round(price * 100) % 10;
+function lastDigit(price) {
+  return Math.round(price * 100) % 10;
+}
 const money = (n) => `$${n.toFixed(2)}`;
 
 // ---------- Small icons ----------
@@ -69,6 +116,7 @@ function Dice() {
 // ---------- Page ----------
 export default function Spot() {
   const [marketId, setMarketId] = useState(MARKETS[0].id);
+  const [contractTypeId, setContractTypeId] = useState(CONTRACT_TYPES[0].id);
   const [mode, setMode] = useState("manual");
   const [stakeInput, setStakeInput] = useState(""); // empty = show placeholder
   const [ticks, setTicks] = useState(1);
@@ -80,6 +128,86 @@ export default function Spot() {
   });
   const [, rerender] = useReducer((n) => n + 1, 0);
 
+  // ---------- Real balance (Supabase profiles.balance) ----------
+  const [userId, setUserId] = useState(null);
+  const [balance, setBalance] = useState(0);
+  const [balanceLoading, setBalanceLoading] = useState(true);
+  const [balanceError, setBalanceError] = useState("");
+
+  const userIdRef = useRef(null);
+  const balanceRef = useRef(0);
+  useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
+  useEffect(() => {
+    balanceRef.current = balance;
+  }, [balance]);
+
+  useEffect(() => {
+    async function loadBalance() {
+      setBalanceLoading(true);
+      setBalanceError("");
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("No logged-in user found.");
+
+        setUserId(user.id);
+
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("balance")
+          .eq("id", user.id)
+          .single();
+        if (error) throw error;
+
+        setBalance(Number(data?.balance) || 0);
+      } catch (e) {
+        setBalanceError(e.message);
+      } finally {
+        setBalanceLoading(false);
+      }
+    }
+
+    loadBalance();
+
+    // Stay in sync with balance changes made elsewhere (admin panel, or the
+    // Dashboard's own deposit/withdraw flows) while this page is open.
+    const channel = supabase
+      .channel("spot-profile-balance-changes")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles" },
+        (payload) => {
+          if (userIdRef.current && payload.new.id === userIdRef.current) {
+            setBalance(Number(payload.new.balance) || 0);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Apply a balance change locally and persist it, so this trading page and
+  // the Dashboard's balance always agree.
+  const applyBalanceDelta = async (delta) => {
+    const next = Math.max(0, balanceRef.current + delta);
+    balanceRef.current = next;
+    setBalance(next);
+    if (!userIdRef.current) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ balance: next })
+      .eq("id", userIdRef.current);
+    if (error) console.error("Failed to update balance:", error.message);
+  };
+
   const stake = stakeInput === "" ? DEFAULT_STAKE : Number(stakeInput) || 0;
 
   const store = useRef(null);
@@ -89,7 +217,7 @@ export default function Spot() {
   const open = useRef([]);
   const idRef = useRef(0);
   const cfg = useRef({});
-  cfg.current = { mode, stake, ticks, marketId };
+  cfg.current = { mode, stake, ticks, marketId, contractTypeId };
 
   // One clock drives every market, settles trades and runs auto mode
   useEffect(() => {
@@ -105,11 +233,16 @@ export default function Spot() {
         t.left -= 1;
         if (t.left > 0) return true;
         const arr = store.current[t.marketId];
-        const isEven = lastDigit(arr[arr.length - 1]) % 2 === 0;
-        const won = isEven === (t.side === "even");
+        const finalPrice = arr[arr.length - 1];
+        const contract = CONTRACT_TYPES.find((c) => c.id === t.contractTypeId);
+        const won = contract ? contract.settle(t, finalPrice) : false;
         delta.trades += 1;
-        if (won) delta.wins += 1;
-        else delta.losses += 1;
+        if (won) {
+          delta.wins += 1;
+          applyBalanceDelta(t.stake * PAYOUT);
+        } else {
+          delta.losses += 1;
+        }
         delta.pnl += won ? t.stake * (PAYOUT - 1) : -t.stake;
         return false;
       });
@@ -123,16 +256,35 @@ export default function Spot() {
       }
 
       const c = cfg.current;
-      if (c.mode === "auto" && c.stake >= 1 && open.current.length === 0) {
-        const recent = store.current[c.marketId].slice(-100);
-        const evens = recent.filter((p) => lastDigit(p) % 2 === 0).length;
+      if (
+        c.mode === "auto" &&
+        c.stake >= 1 &&
+        c.stake <= balanceRef.current &&
+        open.current.length === 0
+      ) {
+        const arr = store.current[c.marketId];
+        const recent = arr.slice(-100);
+        const entryPrice = arr[arr.length - 1];
+        let side;
+        if (c.contractTypeId === "risefall") {
+          side = recent[recent.length - 1] >= recent[0] ? "rise" : "fall";
+        } else if (c.contractTypeId === "overunder") {
+          const overs = recent.filter((p) => lastDigit(p) > 5).length;
+          side = overs >= recent.length / 2 ? "over" : "under";
+        } else {
+          const evens = recent.filter((p) => lastDigit(p) % 2 === 0).length;
+          side = evens >= recent.length / 2 ? "even" : "odd";
+        }
         open.current.push({
           id: ++idRef.current,
           marketId: c.marketId,
-          side: evens >= recent.length / 2 ? "even" : "odd",
+          contractTypeId: c.contractTypeId,
+          side,
           stake: c.stake,
           left: c.ticks,
+          entryPrice,
         });
+        applyBalanceDelta(-c.stake);
       }
 
       rerender();
@@ -143,6 +295,7 @@ export default function Spot() {
 
   // ---------- Derived data ----------
   const market = MARKETS.find((m) => m.id === marketId);
+  const contract = CONTRACT_TYPES.find((c) => c.id === contractTypeId);
   const history = store.current[marketId];
   const visible = history.slice(-VISIBLE);
   const last = visible[visible.length - 1];
@@ -166,7 +319,8 @@ export default function Spot() {
   }));
 
   const payout = stake * PAYOUT;
-  const canTrade = mode === "manual" && stake >= 1;
+  const canTrade =
+    !balanceLoading && mode === "manual" && stake >= 1 && stake <= balance;
   const pnl = session.pnl;
 
   // ---------- Actions ----------
@@ -175,10 +329,13 @@ export default function Spot() {
     open.current.push({
       id: ++idRef.current,
       marketId,
+      contractTypeId,
       side,
       stake,
       left: ticks,
+      entryPrice: last,
     });
+    applyBalanceDelta(-stake);
     rerender();
   };
 
@@ -218,10 +375,21 @@ export default function Spot() {
             <div className="ds-pill ds-pill-contract">
               <div className="ds-pill-title">
                 <Dice />
-                <span>Even / Odd</span>
+                <span>{contract.label}</span>
               </div>
               <div className="ds-pill-sub">Contract Type</div>
               <Chevron />
+              <select
+                aria-label="Contract type"
+                value={contractTypeId}
+                onChange={(e) => setContractTypeId(e.target.value)}
+              >
+                {CONTRACT_TYPES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -276,6 +444,13 @@ export default function Spot() {
 
       {/* ===== Right: trade panel ===== */}
       <div className="ds-panel">
+        <div className="ds-balance-row">
+          <span>Balance</span>
+          <span className="value mono">
+            {balanceLoading ? "…" : money(balance)}
+          </span>
+        </div>
+
         <div className="ds-modes">
           <button
             className={`btn ${mode === "auto" ? "btn-primary" : "btn-outline"} ds-mode`}
@@ -321,6 +496,10 @@ export default function Spot() {
             +
           </button>
         </div>
+        {!balanceLoading && stake > balance && (
+          <p className="ds-insufficient">Insufficient balance</p>
+        )}
+        {balanceError && <p className="ds-insufficient">{balanceError}</p>}
 
         <div className="ds-ticks">
           <div className="ds-ticks-head">
@@ -355,22 +534,17 @@ export default function Spot() {
         </div>
 
         <div className="ds-actions">
-          <button
-            className="btn ds-trade even"
-            disabled={!canTrade}
-            onClick={() => place("even")}
-          >
-            <span className="name">Even</span>
-            <span className="pay">{money(payout)}</span>
-          </button>
-          <button
-            className="btn ds-trade odd"
-            disabled={!canTrade}
-            onClick={() => place("odd")}
-          >
-            <span className="name">Odd</span>
-            <span className="pay">{money(payout)}</span>
-          </button>
+          {contract.options.map((opt, i) => (
+            <button
+              key={opt.key}
+              className={`btn ds-trade ${i === 0 ? "option-a" : "option-b"}`}
+              disabled={!canTrade}
+              onClick={() => place(opt.key)}
+            >
+              <span className="name">{opt.label}</span>
+              <span className="pay">{money(payout)}</span>
+            </button>
+          ))}
         </div>
       </div>
     </div>
