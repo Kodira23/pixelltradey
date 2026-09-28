@@ -134,7 +134,39 @@ h3 {
   white-space: nowrap;
   flex-shrink: 0;
 }
+/* =========================================================
+   LANDING: tighter section spacing (desktop / tablet)
+   Place ABOVE the phone block.
+   ========================================================= */
+.hero {
+  gap: 32px;
+  padding: 120px 0 24px; /* was 140px 0 60px */
+}
+.hero p.lede {
+  margin: 16px 0 24px; /* was 22px 0 32px */
+}
+.hero .cta-row {
+  margin-bottom: 24px; /* was 34px */
+}
 
+.section {
+  padding: 32px 0; /* was 70px 0 */
+}
+.section .kicker {
+  margin-bottom: 8px;
+}
+.section h2 {
+  margin-bottom: 10px; /* was 14px */
+}
+
+.feature-grid,
+.strategy-grid {
+  margin-top: 24px; /* was 40px */
+}
+
+.transparency-grid {
+  gap: 28px; /* was 40px */
+}
 /* Phone header: slim, vertically centred, blurred background */
 @media (max-width: 640px) {
   .container {
@@ -420,7 +452,11 @@ h3 {
         grid-template-columns: 1fr;
     }
 }
-
+@media (max-width: 1024px) {
+  .hero {
+    padding: 92px 0 12px;
+  }
+}
 @media (max-width: 480px) {
     .hero-headline-lg {
         font-size: clamp(1.6rem, 8vw, 2rem);
