@@ -135,13 +135,19 @@ h3 {
   flex-shrink: 0;
 }
 
-@media (max-width: 480px) {
+/* Phone header: slim, vertically centred, blurred background */
+@media (max-width: 640px) {
   .container {
     padding: 0 16px;
   }
 
   .navbar-landing {
-    padding: 16px 0;
+    padding: 10px 0;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    background: rgba(10, 14, 26, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
   }
   .navbar-landing .container {
     padding: 0 16px;
@@ -149,46 +155,41 @@ h3 {
   .navbar-landing-inner {
     gap: 8px;
   }
-  .navbar-landing-actions {
+  .navbar .logo {
+    align-items: center;
     gap: 8px;
   }
-  .navbar-get-started,
+  .navbar-logo-img {
+    height: 28px;
+  }
+  .navbar-logo-text {
+    font-size: 18px;
+  }
+  .navbar-landing-actions {
+    gap: 6px;
+  }
   .navbar-signin-link {
-    padding: 8px 14px;
+    padding: 8px 12px;
     font-size: 13px;
+    border-color: transparent; /* quiet text link so Get started stands out */
+  }
+  .navbar-get-started {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+}
+
+/* Very narrow phones (~360px wide) */
+@media (max-width: 380px) {
+  .navbar-logo-text {
+    font-size: 15px;
   }
   .navbar-logo-img {
     height: 24px;
   }
-  .navbar-logo-text {
-    font-size: 17px;
-  }
-  .navbar .logo {
-    gap: 6px;
-  }
-}
-
-/* Tighter fit for narrow phones (Galaxy S8+ and similar, ~360px wide) */
-@media (max-width: 400px) {
-  .navbar .container {
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .navbar-landing-inner {
-    gap: 6px;
-  }
-  .navbar-landing-actions {
-    gap: 6px;
-  }
-  .navbar-logo-img {
-    height: 22px;
-  }
-  .navbar-logo-text {
-    font-size: 15px;
-  }
-  .navbar-get-started,
-  .navbar-signin-link {
-    padding: 7px 12px;
+  .navbar-signin-link,
+  .navbar-get-started {
+    padding: 7px 10px;
     font-size: 12px;
   }
 }
@@ -303,14 +304,14 @@ h3 {
     font-size: 12px;
 }
 
-/* ---------- Hero image col ---------- */
+/* ---------- Hero image col (whole image visible) ---------- */
 .hero-image-col {
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
-    height: 480px;
+    overflow: visible;
+    height: auto;
 }
 
 .hero-photo {
@@ -321,10 +322,11 @@ h3 {
 }
 
 .hero-photo-bg {
-    position: absolute;
-    width: 128%;
-    max-width: none;
-    z-index: 0;
+    position: static;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
     pointer-events: none;
 }
 
@@ -346,35 +348,32 @@ h3 {
     max-width: 640px;
 }
 
-/* Mobile: image moves into the hero itself, cropped/zoomed to fill the box,
-   no border/frame */
+/* Mobile image: hidden on desktop, shown in full below the buttons on phones */
 .hero-mobile-image-wrap {
     display: none;
 }
 
 @media (max-width: 1024px) {
+    .hero-content {
+        display: flex;
+        flex-direction: column;
+    }
     .hero-mobile-image-wrap {
         display: block;
+        order: 99; /* after headline, text and buttons */
         width: 100%;
-        height: 300px;
-        overflow: hidden;
-        border-radius: var(--radius);
+        height: auto;
+        overflow: visible;
+        border-radius: 0;
         border: none;
-        margin-bottom: 24px;
+        margin: 28px 0 0;
     }
     .hero-mobile-image-wrap img {
         width: 100%;
-        height: 100%;
-        object-fit: cover;
-        object-position: center;
-        transform: scale(1.35);
+        height: auto;
+        object-fit: contain;
+        transform: none;
         display: block;
-    }
-}
-
-@media (max-width: 640px) {
-    .hero-mobile-image-wrap {
-        height: 260px;
     }
 }
 
@@ -393,7 +392,7 @@ h3 {
 
     .hero {
         grid-template-columns: 1fr;
-        padding: 110px 0 20px;
+        padding: 92px 0 20px;
     }
 
     /* Smaller, better-proportioned heading so it doesn't wrap into
