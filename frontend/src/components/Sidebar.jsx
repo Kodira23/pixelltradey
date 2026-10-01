@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import logo from "../logo - Copy.jpeg";
+import logo from "../vanytx.png";
 
 const links = [
   {
