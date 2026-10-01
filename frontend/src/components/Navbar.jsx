@@ -7,8 +7,8 @@ export default function Navbar() {
     <div className="navbar navbar-landing">
       <div className="container navbar-landing-inner">
         <Link to="/" className="logo">
-          <img src={logo} alt="PixellTrade" className="navbar-logo-img" />
-          <span className="navbar-logo-text">PixellTrade</span>
+          <img src={logo} alt="VantyxTrade" className="navbar-logo-img" />
+          <span className="navbar-logo-text">VantyxTrade</span>
         </Link>
         <nav className="navbar-landing-actions">
           <Link to="/login" className="navbar-signin-link">
