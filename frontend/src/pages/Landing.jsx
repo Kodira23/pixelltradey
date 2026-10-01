@@ -40,12 +40,12 @@ export default function Landing() {
             <div className="hero-mobile-image-wrap">
               <img
                 src={heroTradeImage}
-                alt="PixellTrade trading dashboard preview"
+                alt="VantyxTrade trading dashboard preview"
               />
             </div>
 
             <p className="lede">
-              PixellTrade runs disciplined, rule-based buying strategies
+              VantyxTrade runs disciplined, rule-based buying strategies
               directly on your own Binance account. We never hold your money you
               connect a trade-only API key, set your schedule, and the bot does
               the rest.
@@ -62,7 +62,7 @@ export default function Landing() {
           <div className="hero-image-col">
             <img
               src={heroTradeImage}
-              alt="PixellTrade trading dashboard preview"
+              alt="VantyxTrade trading dashboard preview"
               className="hero-photo hero-photo-bg"
             />
           </div>
@@ -73,7 +73,7 @@ export default function Landing() {
           <div className="kicker">Strategy</div>
           <h2>Two focused strategies. No noise, no guesswork.</h2>
           <p className="section-lede">
-            Rather than a wall of preset bots, PixellTrade ships two strategies
+            Rather than a wall of preset bots, VantyxTrade ships two strategies
             we actually stand behind — each with dip and RSI-aware buying
             layered on top of a fixed schedule.
           </p>
@@ -170,7 +170,7 @@ export default function Landing() {
         }}
       >
         <div className="container">
-          © {new Date().getFullYear()} PixellTrade. Not financial advice.
+          © {new Date().getFullYear()} VantyxTrade. Not financial advice.
           Trading involves risk.
         </div>
       </footer>
