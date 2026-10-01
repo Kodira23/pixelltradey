@@ -157,7 +157,7 @@ export default function Sidebar() {
             alt="VantyxTrade"
             style={{ height: 28, width: "auto", borderRadius: 6 }}
           />
-          PixellTrade
+          VantyxTrade
         </div>
 
         <nav className="app-header-nav">
