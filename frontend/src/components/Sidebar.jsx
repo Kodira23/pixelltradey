@@ -154,7 +154,7 @@ export default function Sidebar() {
         <div className="logo">
           <img
             src={logo}
-            alt="PixellTrade"
+            alt="VantyxTrade"
             style={{ height: 28, width: "auto", borderRadius: 6 }}
           />
           PixellTrade
