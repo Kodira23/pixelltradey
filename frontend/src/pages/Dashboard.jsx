@@ -23,8 +23,7 @@ const COIN_META = {
 // Mock wallet addresses – replace with real generation from backend
 const WALLETS = {
   BTC: "1CUiUjKiH6paR13YdHSzWQJ7XjEGRXeEeu",
-  USDT_TRC20: "ТPJjgnPuhg3GzQdGhJUwFYsAKg6
-W8pkTdk",
+  USDT_TRC20: "ТPJjgnPuhg3GzQdGhJUwFYsAKg6W8pkTdk",
 };
 
 // Withdrawal method options (icon + display label)
