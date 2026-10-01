@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import logo from "../logo - Copy.jpeg";
+import logo from "../vimage.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
