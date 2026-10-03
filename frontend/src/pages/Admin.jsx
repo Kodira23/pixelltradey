@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 
+// Only this Supabase user can open the admin panel
+const ADMIN_UID = "935b6c78-7da2-4111-bdd5-f4d4a4826699";
+
 const NAV_ITEMS = [
   { key: "Users", label: "Users", icon: "👥" },
   { key: "Chats", label: "Chats", icon: "💬" },
@@ -11,6 +14,7 @@ const NAV_ITEMS = [
 export default function Admin() {
   console.log("Admin.jsx is rendering"); // 👈 debug log
 
+  const [authorized, setAuthorized] = useState(false);
   const [activeTab, setActiveTab] = useState("Users");
   const [users, setUsers] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -54,6 +58,19 @@ export default function Admin() {
     setLoading(true);
     setError("");
     try {
+      // Block everyone except the admin user before loading any data
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      if (!user || user.id !== ADMIN_UID) {
+        setAuthorized(false);
+        return;
+      }
+      setAuthorized(true);
+
       await Promise.all([loadUsers(), loadWithdrawals(), loadConversations()]);
     } catch (e) {
       setError(e.message);
@@ -162,6 +179,20 @@ export default function Admin() {
     return (
       <div className="admin-layout">
         <p style={{ color: "var(--text-muted)", padding: 24 }}>Loading…</p>
+      </div>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <div className="admin-layout">
+        <div style={{ padding: 24 }}>
+          <h1>Access denied</h1>
+          <p style={{ color: "var(--text-muted)" }}>
+            You don't have permission to view the admin panel.
+          </p>
+          {error && <p className="error-text">{error}</p>}
+        </div>
       </div>
     );
   }
