@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useBots } from "../context/BotsContext";
 
 const BOT_META = {
   btc_accumulation: {
     label: "Bitcoin Accumulation",
     symbol: "BTCUSDT",
+    base: "BTC",
     icon: "₿",
     cadence: "Weekly • DCA",
     description: "Dollar-cost averaging into Bitcoin on a weekly basis.",
@@ -13,6 +14,7 @@ const BOT_META = {
   eth_dca_pro: {
     label: "ETH DCA Pro",
     symbol: "ETHUSDT",
+    base: "ETH",
     icon: "Ξ",
     cadence: "Daily • DCA",
     description: "Dynamic DCA based on RSI and volume indicators.",
@@ -22,7 +24,11 @@ const BOT_META = {
 
 const RISK_CLASS = { Low: "risk-low", Medium: "risk-medium", High: "risk-high" };
 const MIN_CONFIGURE_BALANCE = 5;
-const RECENT_TRADES_SHOWN = 5;
+const MIN_AMOUNT = 50;
+const LOG_LINES_SHOWN = 8;
+const COMMENT_INTERVAL_MS = 3000;
+const COMMENT_COLOR = "#3b82f6";
+const BASE_PRICES = { BTC: 97500, ETH: 3400 };
 
 function fmtUsd(n) {
   const v = Number(n) || 0;
@@ -45,6 +51,41 @@ function fmtTime(ts) {
     second: "2-digit",
     hour12: true,
   });
+}
+
+// Win rate as a whole percent, or null when there are no closed trades yet
+function calcWinRate(wins, losses) {
+  const total = (wins || 0) + (losses || 0);
+  return total > 0 ? Math.round((wins / total) * 100) : null;
+}
+
+// How much the user put into a bot. Reads the first field that exists on the
+// bot record, so adjust this if your context stores it under another name.
+function getAllocation(bot) {
+  if (!bot) return 0;
+  return (
+    Number(bot.amount ?? bot.amount_usdt ?? bot.allocation ?? bot.buy_amount ?? 0) || 0
+  );
+}
+
+// Blue "bot is thinking" lines shown in the activity log while a bot runs
+function randomComment(base, price) {
+  const p = price.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const templates = [
+    `Buy ${base} @ $${p}`,
+    `Sell ${base} @ $${p}`,
+    `Scanning ${base}/USDT order book`,
+    `RSI signal confirmed on ${base}`,
+    `Rebalancing ${base} allocation`,
+    `Volume spike detected on ${base}`,
+    `Executing DCA order for ${base}`,
+    `Market trend: ${base} consolidating`,
+    `Spread tightening on ${base}/USDT`,
+  ];
+  return templates[Math.floor(Math.random() * templates.length)];
 }
 
 // ---------- Bot picker: choose which bot to configure ----------
@@ -90,12 +131,18 @@ function BotPicker({ bots, onSelect, onClose }) {
 }
 
 // ---------- Config form ----------
-function CreateBotForm({ meta, onCreate, onCancel }) {
+function CreateBotForm({ meta, balance, onCreate, onCancel }) {
   const [amount, setAmount] = useState(100);
+
+  const numAmount = Number(amount);
+  const tooLow = !numAmount || numAmount < MIN_AMOUNT;
+  const tooHigh = numAmount > Number(balance || 0);
+  const invalid = tooLow || tooHigh;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onCreate(Number(amount));
+    if (invalid) return;
+    onCreate(numAmount);
   };
 
   return (
@@ -107,17 +154,23 @@ function CreateBotForm({ meta, onCreate, onCancel }) {
       <div className="bot-symbol">{meta.symbol}</div>
 
       <div className="field">
-        <label>Buy amount (USDT)</label>
+        <label>Allocation size (USDT)</label>
         <input
           type="number"
-          min="50"
+          min={MIN_AMOUNT}
+          max={Number(balance || 0)}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           autoFocus
         />
         <p className="bot-min-balance-note" style={{ textAlign: "left", marginTop: 6 }}>
-          Min amount: $50
+          Min amount: ${MIN_AMOUNT} &middot; Available balance: ${Number(balance || 0).toFixed(2)}
         </p>
+        {tooHigh && (
+          <p className="error-text" style={{ marginTop: 6 }}>
+            Allocation exceeds your available balance.
+          </p>
+        )}
       </div>
 
       <div className="bot-card-buttons">
@@ -129,7 +182,11 @@ function CreateBotForm({ meta, onCreate, onCancel }) {
         >
           Cancel
         </button>
-        <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }}>
+        <button
+          className="btn btn-primary"
+          style={{ flex: 1, justifyContent: "center" }}
+          disabled={invalid}
+        >
           Save Configuration
         </button>
       </div>
@@ -137,33 +194,74 @@ function CreateBotForm({ meta, onCreate, onCancel }) {
   );
 }
 
-// ---------- Activity log: auto-visible, most recent trades only ----------
-function ActivityLog({ trades }) {
-  const recent = (trades || []).slice(0, RECENT_TRADES_SHOWN);
+// ---------- Activity log: real trades + blue bot commentary ----------
+function ActivityLog({ trades, active, base }) {
+  const [comments, setComments] = useState([]);
+
+  // While the bot is running, add a blue commentary line every few seconds
+  useEffect(() => {
+    if (!active) return;
+    let price = BASE_PRICES[base] || 100;
+    const iv = setInterval(() => {
+      price = price * (1 + (Math.random() - 0.5) * 0.004);
+      setComments((prev) =>
+        [
+          { id: `c-${Date.now()}`, ts: Date.now(), msg: randomComment(base, price) },
+          ...prev,
+        ].slice(0, LOG_LINES_SHOWN)
+      );
+    }, COMMENT_INTERVAL_MS);
+    return () => clearInterval(iv);
+  }, [active, base]);
+
+  // Merge real trades and commentary, newest first
+  const lines = useMemo(() => {
+    const tradeLines = (trades || []).slice(0, LOG_LINES_SHOWN).map((t) => ({
+      kind: "trade",
+      id: `t-${t.id}`,
+      ts: new Date(t.when).getTime(),
+      trade: t,
+    }));
+    const commentLines = comments.map((c) => ({ kind: "comment", ...c }));
+    return [...tradeLines, ...commentLines]
+      .sort((a, b) => b.ts - a.ts)
+      .slice(0, LOG_LINES_SHOWN);
+  }, [trades, comments]);
 
   return (
     <div className="activity-log">
       <div className="activity-log-title">Activity Log</div>
-      {recent.length === 0 ? (
+      {lines.length === 0 ? (
         <p style={{ color: "var(--text-muted)", margin: 0, fontSize: 13 }}>
-          No trades yet — waiting for the bot to run.
+          {active
+            ? "Bot is running — activity will appear here."
+            : "No trades yet — start the bot to see activity."}
         </p>
       ) : (
-        recent.map((t) => (
-          <div className="activity-log-row" key={t.id}>
-            <span className="activity-log-time mono">{fmtTime(t.when)}</span>
-            <span className={`activity-log-arrow ${t.isWin ? "up" : "down"}`}>
-              {t.isWin ? "↑" : "↓"}
-            </span>
-            <span className="activity-log-label">Trade</span>
-            <span className={`activity-log-amount mono ${t.isWin ? "up" : "down"}`}>
-              {fmtTradeUsd(t.usdt)}
-            </span>
-            <span className={`activity-log-percent mono ${t.isWin ? "up" : "down"}`}>
-              ({fmtPercent(t.percent)})
-            </span>
-          </div>
-        ))
+        lines.map((line) =>
+          line.kind === "comment" ? (
+            <div className="activity-log-row" key={line.id}>
+              <span className="activity-log-time mono">{fmtTime(line.ts)}</span>
+              <span className="activity-log-label" style={{ color: COMMENT_COLOR }}>
+                {line.msg}
+              </span>
+            </div>
+          ) : (
+            <div className="activity-log-row" key={line.id}>
+              <span className="activity-log-time mono">{fmtTime(line.trade.when)}</span>
+              <span className={`activity-log-arrow ${line.trade.isWin ? "up" : "down"}`}>
+                {line.trade.isWin ? "↑" : "↓"}
+              </span>
+              <span className="activity-log-label">Trade</span>
+              <span className={`activity-log-amount mono ${line.trade.isWin ? "up" : "down"}`}>
+                {fmtTradeUsd(line.trade.usdt)}
+              </span>
+              <span className={`activity-log-percent mono ${line.trade.isWin ? "up" : "down"}`}>
+                ({fmtPercent(line.trade.percent)})
+              </span>
+            </div>
+          )
+        )
       )}
     </div>
   );
@@ -189,6 +287,7 @@ function BotCard({
     return (
       <CreateBotForm
         meta={meta}
+        balance={balance}
         onCreate={(amount) => {
           onCreated(botType, amount);
           onConfigureCancel();
@@ -208,6 +307,8 @@ function BotCard({
   const wins = bot?.wins ?? 0;
   const losses = bot?.losses ?? 0;
   const trades = bot?.trades ?? [];
+  const winRate = calcWinRate(wins, losses);
+  const allocation = getAllocation(bot);
 
   return (
     <div className="bot-card">
@@ -237,6 +338,17 @@ function BotCard({
         </div>
       </div>
 
+      <div className="bot-stats-row">
+        <div className="bot-stat-col">
+          <div className="bot-stat-label">Win Rate</div>
+          <div className="bot-stat-value mono">{winRate !== null ? `${winRate}%` : "—"}</div>
+        </div>
+        <div className="bot-stat-col">
+          <div className="bot-stat-label">Allocated</div>
+          <div className="bot-stat-value mono">{bot ? `$${allocation.toFixed(2)}` : "—"}</div>
+        </div>
+      </div>
+
       {error && (
         <p className="error-text" style={{ marginTop: 0 }}>
           {error}
@@ -255,7 +367,7 @@ function BotCard({
               Configure
             </button>
             <button className="btn btn-outline" style={{ flex: 1, justifyContent: "center" }} disabled>
-             Start Bot
+              Start Bot
             </button>
           </div>
           {!canConfigure && (
@@ -271,7 +383,7 @@ function BotCard({
             style={{ flex: 1, justifyContent: "center" }}
             onClick={() => onStart(botType)}
           >
-             Start Bot
+            Start Bot
           </button>
           <button
             className="btn btn-outline"
@@ -288,7 +400,7 @@ function BotCard({
             style={{ flex: 1, justifyContent: "center" }}
             onClick={() => onStop(botType)}
           >
-             Stop
+            Stop
           </button>
           <button
             className="btn btn-ghost"
@@ -300,8 +412,8 @@ function BotCard({
         </div>
       )}
 
-      {/* Activity log now always shows automatically once a bot exists */}
-      {bot && <ActivityLog trades={trades} />}
+      {/* Activity log shows automatically once a bot exists */}
+      {bot && <ActivityLog trades={trades} active={isActive} base={meta.base} />}
     </div>
   );
 }
@@ -316,6 +428,16 @@ export default function Bots() {
   const totalBots = Object.keys(BOT_META).length;
   const meetsMinBalance = Number(balance) >= MIN_CONFIGURE_BALANCE;
   const statusLabel = meetsMinBalance ? "Ready" : "Locked";
+
+  // Totals across every configured bot
+  const totals = useMemo(() => {
+    const all = Object.values(bots || {}).filter(Boolean);
+    const pnl = all.reduce((s, b) => s + (b.pnl_usdt || 0), 0);
+    const wins = all.reduce((s, b) => s + (b.wins || 0), 0);
+    const losses = all.reduce((s, b) => s + (b.losses || 0), 0);
+    const allocated = all.reduce((s, b) => s + getAllocation(b), 0);
+    return { pnl, trades: wins + losses, winRate: calcWinRate(wins, losses), allocated };
+  }, [bots]);
 
   const handlePickBot = (botType) => {
     setConfiguringType(botType);
@@ -338,6 +460,26 @@ export default function Bots() {
                 {balanceLoading ? "…" : `$${Number(balance).toFixed(2)}`}
               </div>
               <div className="bots-hero-stat-label">Available Balance</div>
+            </div>
+            <div className="bots-hero-stat">
+              <div className={`bots-hero-stat-value mono ${totals.pnl >= 0 ? "up" : "down"}`}>
+                {fmtUsd(totals.pnl)}
+              </div>
+              <div className="bots-hero-stat-label">P&amp;L</div>
+            </div>
+            <div className="bots-hero-stat">
+              <div className="bots-hero-stat-value mono">
+                {totals.winRate !== null ? `${totals.winRate}%` : "—"}
+              </div>
+              <div className="bots-hero-stat-label">Win Rate</div>
+            </div>
+            <div className="bots-hero-stat">
+              <div className="bots-hero-stat-value mono">{totals.trades}</div>
+              <div className="bots-hero-stat-label">Trades</div>
+            </div>
+            <div className="bots-hero-stat">
+              <div className="bots-hero-stat-value mono">${totals.allocated.toFixed(0)}</div>
+              <div className="bots-hero-stat-label">Allocated</div>
             </div>
             <div className="bots-hero-stat">
               <div className={`bots-hero-stat-value mono ${meetsMinBalance ? "up" : "down"}`}>
@@ -393,6 +535,11 @@ export default function Bots() {
           onRemove={removeBot}
         />
       </div>
+
+      <p className="bot-min-balance-note" style={{ marginTop: 16 }}>
+        Automated bots trade based on your configuration and market conditions. Past performance
+        does not guarantee future results. Only allocate funds you can afford to have at risk.
+      </p>
     </>
   );
 }
