@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import logo from "../vt.png";
@@ -93,6 +93,53 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Same balance the Dashboard shows (profiles.balance), kept live via realtime
+  const [balance, setBalance] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let channel = null;
+
+    async function loadBalance() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("balance")
+          .eq("id", user.id)
+          .single();
+        if (error) throw error;
+        if (!cancelled) setBalance(Number(data?.balance) || 0);
+
+        channel = supabase
+          .channel("header-balance-changes")
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "profiles" },
+            (payload) => {
+              if (payload.new.id === user.id) {
+                setBalance(Number(payload.new.balance) || 0);
+              }
+            },
+          )
+          .subscribe();
+      } catch (e) {
+        console.error("Failed to load header balance:", e.message);
+      }
+    }
+
+    loadBalance();
+
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     navigate("/");
@@ -106,6 +153,52 @@ export default function Sidebar() {
     <header className="app-header">
       <div className="container app-header-inner">
         <div className="app-header-actions">
+          {/* Notifications */}
+          <button
+            type="button"
+            className="app-header-user app-header-bell"
+            aria-label="Notifications"
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "inherit",
+              display: "inline-flex",
+              alignItems: "center",
+            }}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </button>
+
+          {/* Balance, sits just before the user icon */}
+          <span
+            className="app-header-balance mono"
+            title="Available balance"
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: "1px solid var(--border, rgba(255,255,255,0.12))",
+            }}
+          >
+            {balance === null ? "…" : `$${balance.toFixed(2)}`}
+          </span>
+
           <span className="app-header-user" aria-label="Account">
             <svg
               width="18"
