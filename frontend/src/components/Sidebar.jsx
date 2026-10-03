@@ -95,6 +95,7 @@ export default function Sidebar() {
 
   // Same balance the Dashboard shows (profiles.balance), kept live via realtime
   const [balance, setBalance] = useState(null);
+  const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -109,11 +110,20 @@ export default function Sidebar() {
 
         const { data, error } = await supabase
           .from("profiles")
-          .select("balance")
+          .select("balance, name")
           .eq("id", user.id)
           .single();
         if (error) throw error;
-        if (!cancelled) setBalance(Number(data?.balance) || 0);
+        if (!cancelled) {
+          setBalance(Number(data?.balance) || 0);
+          setDisplayName(
+            data?.name ||
+              user.user_metadata?.full_name ||
+              user.user_metadata?.name ||
+              user.email?.split("@")[0] ||
+              "",
+          );
+        }
 
         channel = supabase
           .channel("header-balance-changes")
@@ -123,6 +133,7 @@ export default function Sidebar() {
             (payload) => {
               if (payload.new.id === user.id) {
                 setBalance(Number(payload.new.balance) || 0);
+                if (payload.new.name) setDisplayName(payload.new.name);
               }
             },
           )
@@ -214,6 +225,22 @@ export default function Sidebar() {
               <circle cx="12" cy="7" r="4" />
             </svg>
           </span>
+          {displayName && (
+            <span
+              className="app-header-name"
+              title={displayName}
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                maxWidth: 140,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {displayName}
+            </span>
+          )}
           <button
             className="btn btn-ghost desktop-signout"
             onClick={handleSignOut}
@@ -269,6 +296,14 @@ export default function Sidebar() {
 
       {menuOpen && (
         <div className="mobile-menu">
+          {displayName && (
+            <div
+              className="mobile-menu-name"
+              style={{ padding: "8px 16px", fontWeight: 600 }}
+            >
+              {displayName}
+            </div>
+          )}
           {links.map((l) => (
             <NavLink
               key={l.to}
