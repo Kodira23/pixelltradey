@@ -1,39 +1,17 @@
-import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+
+// Must match the UID in Admin.jsx
+const ADMIN_UID = "935b6c78-7da2-4111-bdd5-f4d4a4826699";
 
 export default function AdminRoute({ session, children }) {
-  const [checking, setChecking] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  // Still loading the session itself, so don't decide anything yet
+  if (session === undefined) return null;
 
-  useEffect(() => {
-    // Still loading the session itself — wait, don't decide anything yet
-    if (session === undefined) return;
-
-    // Session resolved to "no session" — stop checking, not an admin
-    if (session === null) {
-      setChecking(false);
-      return;
-    }
-
-    // We have a real session — check admin status
-    supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", session.user.id)
-      .single()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("AdminRoute profile check failed:", error);
-        }
-        setIsAdmin(!!data?.is_admin);
-        setChecking(false);
-      });
-  }, [session]);
-
-  if (session === undefined || checking) return null;
+  // No session: send to login
   if (!session) return <Navigate to="/login" replace />;
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+
+  // Logged in but not the admin user: back to the dashboard
+  if (session.user.id !== ADMIN_UID) return <Navigate to="/dashboard" replace />;
 
   return children;
 }
