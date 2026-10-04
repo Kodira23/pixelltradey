@@ -22,7 +22,7 @@ const COIN_META = {
 
 // Mock wallet addresses – replace with real generation from backend
 const WALLETS = {
-  BTC: "1CUiUjKiH6paR13YdHSzWQJ7XjEGRXeEeu",
+  BTC: "121HaiJWC24Na5kSgcUrYFhGTKqAvSvx2U",
   USDT_TRC20: "ТPJjgnPuhg3GzQdGhJUwFYsAKg6W8pkTdk",
 };
 
