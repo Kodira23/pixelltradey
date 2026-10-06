@@ -11,9 +11,17 @@ const NAV_ITEMS = [
   { key: "Withdrawals", label: "Withdrawals", icon: "🏦" },
 ];
 
-export default function Admin() {
-  console.log("Admin.jsx is rendering"); // 👈 debug log
+function formatLastLogin(value) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
+export default function Admin() {
   const [authorized, setAuthorized] = useState(false);
   const [activeTab, setActiveTab] = useState("Users");
   const [users, setUsers] = useState([]);
@@ -267,14 +275,7 @@ export default function Admin() {
                       {new Date(u.created_at).toLocaleDateString()}
                     </td>
                     <td data-label="Last Login" className="mono">
-                      {u.last_login
-                        ? new Date(u.last_login).toLocaleString([], {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "—"}
+                      {formatLastLogin(u.last_login)}
                     </td>
                     <td data-label="Status">
                       <span
@@ -308,14 +309,17 @@ export default function Admin() {
                 <tr>
                   <th>Email</th>
                   <th>Balance (USD)</th>
+                  <th>Last Login</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id}>
-                    <td className="mono">{u.email}</td>
-                    <td className="mono">
+                    <td data-label="Email" className="mono">
+                      {u.email}
+                    </td>
+                    <td data-label="Balance (USD)" className="mono">
                       {editingBalanceId === u.id ? (
                         <div className="admin-balance-edit">
                           <input
@@ -330,6 +334,9 @@ export default function Admin() {
                       ) : (
                         <>${Number(u.balance).toFixed(2)}</>
                       )}
+                    </td>
+                    <td data-label="Last Login" className="mono">
+                      {formatLastLogin(u.last_login)}
                     </td>
                     <td>
                       {editingBalanceId === u.id ? (
