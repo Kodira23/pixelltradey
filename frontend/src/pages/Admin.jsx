@@ -21,6 +21,9 @@ function formatLastLogin(value) {
   });
 }
 
+// AI is "on" unless switched off or a live agent has taken the chat
+const isAiOn = (c) => c.ai_enabled !== false && c.mode !== "human";
+
 export default function Admin() {
   const [authorized, setAuthorized] = useState(false);
   const [activeTab, setActiveTab] = useState("Users");
@@ -96,7 +99,7 @@ export default function Admin() {
     loadAll();
   }, []);
 
-  // Live updates: user messages and AI replies show up without a refresh
+  // Live updates: user messages, AI replies and hand-offs show up without a refresh
   useEffect(() => {
     if (!authorized) return;
     const channel = supabase
@@ -111,12 +114,20 @@ export default function Admin() {
             loadConversations().catch((e) => setError(e.message));
             return;
           }
+          const nextMode =
+            m.sender === "admin"
+              ? "human"
+              : { handoff: "human", mode_ai: "ai" }[m.kind];
           setConversations((prev) =>
             prev.map((c) =>
               c.id === m.conversation_id
                 ? c.messages.some((x) => x.id === m.id)
                   ? c
-                  : { ...c, messages: [...c.messages, m] }
+                  : {
+                      ...c,
+                      messages: [...c.messages, m],
+                      ...(nextMode ? { mode: nextMode } : {}),
+                    }
                 : c,
             ),
           );
@@ -202,30 +213,25 @@ export default function Admin() {
       .single();
     if (error) return setError(error.message);
 
-    // Realtime may deliver the same row, so de-dupe by id
+    // Replying puts the chat in live-agent mode (the DB trigger does the same).
+    // Realtime may deliver the same row, so de-dupe by id.
     setConversations((prev) =>
       prev.map((c) =>
         c.id === selectedConvo
           ? c.messages.some((x) => x.id === data.id)
-            ? c
-            : {
-                ...c,
-                messages: [...c.messages, data],
-                last_human_reply_at: new Date().toISOString(),
-              }
+            ? { ...c, mode: "human" }
+            : { ...c, messages: [...c.messages, data], mode: "human" }
           : c,
       ),
     );
     setReplyText("");
   }
 
-  // Turn AI auto-reply on/off for one conversation.
-  // Turning it back on also clears the 10-minute human pause.
+  // Give the chat back to the AI, or take it over from the AI
   async function toggleAi(convo) {
-    const next = convo.ai_enabled === false;
-    const patch = next
-      ? { ai_enabled: true, last_human_reply_at: null }
-      : { ai_enabled: false };
+    const patch = isAiOn(convo)
+      ? { mode: "human" }
+      : { mode: "ai", ai_enabled: true };
     const { error } = await supabase
       .from("conversations")
       .update(patch)
@@ -539,6 +545,11 @@ export default function Admin() {
                     >
                       <div className="admin-convo-email">
                         {c.profiles?.email}
+                        {c.mode === "human" && (
+                          <span style={{ marginLeft: 8, fontSize: 11 }}>
+                            🙋 Live agent
+                          </span>
+                        )}
                       </div>
                       <div className="admin-convo-preview">
                         {lastMsg
@@ -567,12 +578,11 @@ export default function Admin() {
                     >
                       <h3>{activeConvo.profiles?.email}</h3>
                       <button
-                        className={`admin-action-btn ${activeConvo.ai_enabled === false ? "deactivate" : "reactivate"}`}
+                        className={`admin-action-btn ${isAiOn(activeConvo) ? "reactivate" : "deactivate"}`}
                         onClick={() => toggleAi(activeConvo)}
-                        title="AI also pauses itself for 10 minutes after you reply"
+                        title="Replying switches the chat to live agent. Click to hand it back to the AI."
                       >
-                        🤖 AI auto-reply:{" "}
-                        {activeConvo.ai_enabled === false ? "OFF" : "ON"}
+                        🤖 AI auto-reply: {isAiOn(activeConvo) ? "ON" : "OFF"}
                       </button>
                     </div>
                     <div className="admin-thread-messages">
