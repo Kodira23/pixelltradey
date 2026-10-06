@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 
-const QUICK_REPLIES = ["I have a question", "Tell me more"];
+const QUICK_REPLIES = ["Hello", "I have a question"];
 
-// 'user' stays on the right; 'admin' (human) and 'ai' both show as support
+// 'user' stays on the right; 'admin' (live agent) and 'ai' show as support
 const toMsg = (m) => ({
   id: m.id,
   from: m.sender === "user" ? "user" : "bot",
   sender: m.sender,
   text: m.text,
+  options: m.options || null,
+  kind: m.kind || null,
 });
 
 export default function ChatWidget() {
@@ -21,6 +23,7 @@ export default function ChatWidget() {
   const [userId, setUserId] = useState(null);
   const [ready, setReady] = useState(false);
   const [waiting, setWaiting] = useState(false);
+  const [humanMode, setHumanMode] = useState(false);
   const channelRef = useRef(null);
 
   // Hide the "typing" bubble if nobody answers within 12s
@@ -90,7 +93,14 @@ export default function ChatWidget() {
       if (msgErr) {
         console.error("Failed to load messages:", msgErr.message);
       } else if (!cancelled) {
-        setMessages((history || []).map(toMsg));
+        const mapped = (history || []).map(toMsg);
+        setMessages(mapped);
+        // Is a live agent currently in charge?
+        const lastSupport = [...mapped].reverse().find((x) => x.sender !== "user");
+        setHumanMode(
+          !!lastSupport &&
+            (lastSupport.sender === "admin" || lastSupport.kind === "handoff"),
+        );
       }
 
       // Realtime: pick up new messages (AI and admin replies) as they arrive.
@@ -106,7 +116,11 @@ export default function ChatWidget() {
           },
           (payload) => {
             const m = payload.new;
-            if (m.sender !== "user") setWaiting(false);
+            if (m.sender !== "user") {
+              setWaiting(false);
+              if (m.sender === "admin") setHumanMode(true);
+              if (m.sender === "ai") setHumanMode(m.kind === "handoff");
+            }
             setMessages((prev) => {
               if (prev.some((existingMsg) => existingMsg.id === m.id)) return prev;
               return [...prev, toMsg(m)];
@@ -155,7 +169,8 @@ export default function ChatWidget() {
     setMessages((prev) =>
       prev.some((x) => x.id === data.id) ? prev : [...prev, toMsg(data)],
     );
-    setWaiting(true);
+    // No "typing" bubble when a live agent has the chat
+    if (!humanMode) setWaiting(true);
   }
 
   function handleKeyDown(e) {
@@ -163,6 +178,12 @@ export default function ChatWidget() {
   }
 
   const showGreeting = messages.length === 0;
+  const last = messages[messages.length - 1];
+  // Choice buttons from the latest AI message (only while it's the last message)
+  const lastOptions =
+    last && last.sender === "ai" && Array.isArray(last.options)
+      ? last.options
+      : [];
 
   return (
     <>
@@ -278,6 +299,11 @@ export default function ChatWidget() {
                       AI assistant
                     </div>
                   )}
+                  {m.sender === "admin" && (
+                    <div style={{ fontSize: 10, opacity: 0.6, marginTop: 4 }}>
+                      Live agent
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -291,6 +317,7 @@ export default function ChatWidget() {
               </div>
             )}
 
+            {/* Opening choices */}
             {ready && showGreeting && (
               <div className="chat-quick-replies">
                 {QUICK_REPLIES.map((qr) => (
@@ -300,6 +327,21 @@ export default function ChatWidget() {
                     onClick={() => sendMessage(qr)}
                   >
                     {qr}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Choices offered by the AI */}
+            {lastOptions.length > 0 && (
+              <div className="chat-quick-replies">
+                {lastOptions.map((opt) => (
+                  <button
+                    key={opt}
+                    className="chat-quick-reply-btn"
+                    onClick={() => sendMessage(opt)}
+                  >
+                    {opt}
                   </button>
                 ))}
               </div>
