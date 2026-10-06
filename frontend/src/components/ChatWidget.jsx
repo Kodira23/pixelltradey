@@ -1,16 +1,140 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 
-const QUICK_REPLIES = ["Hello", "I have a question"];
+// =====================================================================
+// EDIT THIS SECTION: the bot's wording and knowledge
+// =====================================================================
+const OPENING_BUTTONS = ["Hello", "I have a question"];
 
-// 'user' stays on the right; 'admin' (live agent) and 'ai' show as support
-const toMsg = (m) => ({
+const WELCOME =
+  "Yes, welcome to VantyxTrade! Here we deal with high successful wins using manual and AI trades.";
+const CHOICE_PROMPT =
+  "Sure! Would you like to continue with our AI assistant or chat with a live agent?";
+const CHOICES = ["Continue with AI", "Chat with a live agent"];
+const ASK_NOW = "Great! Go ahead and ask your question.";
+const AGENT_NOW =
+  "Connecting you to a live agent now. A team member will reply here shortly.";
+const AI_CANT =
+  "I'm not able to answer that one, so I'm connecting you with a live agent. A team member will reply here shortly.";
+
+// keywords: if the user's message contains any of these, that answer is used.
+// The entry with the most matching keywords wins.
+const FAQ = [
+  {
+    keywords: ["manual", "ai trad", "how do you trade", "how does trading work"],
+    answer:
+      "VantyxTrade lets you trade manually or with AI-powered trading, so you can choose the approach that suits you.",
+  },
+  {
+    keywords: ["bot", "automated", "automatic"],
+    answer:
+      "Bots are automated trading tools you can set up and run from the Bots page.",
+  },
+  {
+    keywords: ["spot", "buy", "sell"],
+    answer:
+      "On the Spot page you can buy and sell crypto at current market prices.",
+  },
+  {
+    keywords: ["market", "price", "prices", "coins", "crypto list"],
+    answer:
+      "The Markets page shows live crypto prices and an overview of the market.",
+  },
+  {
+    keywords: ["dashboard", "overview", "account summary"],
+    answer:
+      "Your Dashboard gives you an overview of your account and balance.",
+  },
+  {
+    keywords: ["withdraw", "cash out", "payout"],
+    answer:
+      "To withdraw, submit a withdrawal request with your method and wallet address. Our team reviews each request and approves or rejects it.",
+  },
+  {
+    keywords: ["settings", "profile", "password", "change name", "change email"],
+    answer: "You can manage your account and profile on the Settings page.",
+  },
+  {
+    keywords: ["what is vantyx", "about", "who are you", "what do you do", "what is this"],
+    answer:
+      "VantyxTrade is a crypto trading platform where you can trade manually or with AI trades.",
+  },
+];
+
+// Anything with these words goes straight to a live agent
+const HANDOFF_WORDS = [
+  "human",
+  "agent",
+  "real person",
+  "refund",
+  "pending",
+  "not received",
+  "stuck",
+  "problem",
+  "issue",
+  "complaint",
+  "scam",
+  "my balance",
+  "my money",
+  "my funds",
+];
+// =====================================================================
+
+function getBotReply(text, mode) {
+  const t = text.trim().toLowerCase();
+
+  if (t === "hello") {
+    return { text: WELCOME, options: ["I have a question"], nextMode: mode };
+  }
+  if (t === "i have a question") {
+    return { text: CHOICE_PROMPT, options: CHOICES, nextMode: "menu" };
+  }
+  if (t === "continue with ai") {
+    return { text: ASK_NOW, nextMode: "ai" };
+  }
+  if (t === "chat with a live agent") {
+    return { text: AGENT_NOW, handoff: true, nextMode: "human" };
+  }
+
+  // Typed something before choosing AI or agent
+  if (mode !== "ai") {
+    return { text: CHOICE_PROMPT, options: CHOICES, nextMode: "menu" };
+  }
+
+  // AI mode: escalate sensitive topics, otherwise try to answer
+  if (HANDOFF_WORDS.some((w) => t.includes(w))) {
+    return { text: AI_CANT, handoff: true, nextMode: "human" };
+  }
+
+  let best = null;
+  let bestScore = 0;
+  for (const item of FAQ) {
+    const score = item.keywords.filter((k) => t.includes(k)).length;
+    if (score > bestScore) {
+      best = item;
+      bestScore = score;
+    }
+  }
+  if (best) {
+    return {
+      text: best.answer,
+      options: ["Chat with a live agent"],
+      nextMode: "ai",
+    };
+  }
+
+  return { text: AI_CANT, handoff: true, nextMode: "human" };
+}
+
+// Messages from the database (user + live agent replies)
+const fromDb = (m) => ({
   id: m.id,
   from: m.sender === "user" ? "user" : "bot",
   sender: m.sender,
   text: m.text,
-  options: m.options || null,
-  kind: m.kind || null,
+  options: null,
+  ts: new Date(m.created_at).getTime(),
+  local: false,
 });
 
 export default function ChatWidget() {
@@ -22,19 +146,27 @@ export default function ChatWidget() {
   const [conversationId, setConversationId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [ready, setReady] = useState(false);
-  const [waiting, setWaiting] = useState(false);
-  const [humanMode, setHumanMode] = useState(false);
+  const [botTyping, setBotTyping] = useState(false);
+  // start | menu | ai | human
+  const [mode, setMode] = useState("start");
   const channelRef = useRef(null);
 
-  // Hide the "typing" bubble if nobody answers within 12s
-  useEffect(() => {
-    if (!waiting) return;
-    const t = setTimeout(() => setWaiting(false), 12000);
-    return () => clearTimeout(t);
-  }, [waiting]);
+  const storageKey = userId ? `vt_support_${userId}` : null;
 
-  // Bootstrap: get the logged-in user, find-or-create their conversation,
-  // load message history, then subscribe to new inserts (AI + admin replies).
+  // Save the bot part of the chat so it survives a page reload
+  useEffect(() => {
+    if (!ready || !storageKey) return;
+    try {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ mode, msgs: messages.filter((m) => m.local) }),
+      );
+    } catch {
+      /* storage unavailable: ignore */
+    }
+  }, [messages, mode, ready, storageKey]);
+
+  // Bootstrap: find the user's conversation, load history, listen for agent replies
   useEffect(() => {
     let cancelled = false;
 
@@ -50,6 +182,15 @@ export default function ChatWidget() {
       if (cancelled) return;
       setUserId(user.id);
 
+      // Restore the bot part of the chat
+      let saved = { mode: "start", msgs: [] };
+      try {
+        const raw = localStorage.getItem(`vt_support_${user.id}`);
+        if (raw) saved = JSON.parse(raw);
+      } catch {
+        /* ignore */
+      }
+
       let convoId = null;
       const { data: existing, error: findErr } = await supabase
         .from("conversations")
@@ -59,9 +200,7 @@ export default function ChatWidget() {
         .limit(1)
         .maybeSingle();
 
-      if (findErr) {
-        console.error("Failed to look up conversation:", findErr.message);
-      }
+      if (findErr) console.error("Failed to look up conversation:", findErr.message);
 
       if (existing) {
         convoId = existing.id;
@@ -78,8 +217,11 @@ export default function ChatWidget() {
         }
       }
 
-      if (cancelled || !convoId) {
-        if (!cancelled) setReady(true);
+      if (cancelled) return;
+      if (!convoId) {
+        setMessages(saved.msgs || []);
+        setMode(saved.mode || "start");
+        setReady(true);
         return;
       }
       setConversationId(convoId);
@@ -90,20 +232,20 @@ export default function ChatWidget() {
         .eq("conversation_id", convoId)
         .order("created_at", { ascending: true });
 
-      if (msgErr) {
-        console.error("Failed to load messages:", msgErr.message);
-      } else if (!cancelled) {
-        const mapped = (history || []).map(toMsg);
-        setMessages(mapped);
-        // Is a live agent currently in charge?
-        const lastSupport = [...mapped].reverse().find((x) => x.sender !== "user");
-        setHumanMode(
-          !!lastSupport &&
-            (lastSupport.sender === "admin" || lastSupport.kind === "handoff"),
+      if (msgErr) console.error("Failed to load messages:", msgErr.message);
+
+      const dbMsgs = (history || []).map(fromDb);
+      const merged = [...dbMsgs, ...(saved.msgs || [])].sort((a, b) => a.ts - b.ts);
+
+      if (!cancelled) {
+        setMessages(merged);
+        // If a live agent has ever replied, the chat stays in live-agent mode
+        setMode(
+          dbMsgs.some((m) => m.sender === "admin") ? "human" : saved.mode || "start",
         );
       }
 
-      // Realtime: pick up new messages (AI and admin replies) as they arrive.
+      // Realtime: live agent replies appear instantly
       const channel = supabase
         .channel(`messages:${convoId}`)
         .on(
@@ -116,15 +258,13 @@ export default function ChatWidget() {
           },
           (payload) => {
             const m = payload.new;
-            if (m.sender !== "user") {
-              setWaiting(false);
-              if (m.sender === "admin") setHumanMode(true);
-              if (m.sender === "ai") setHumanMode(m.kind === "handoff");
+            if (m.sender === "admin") {
+              setMode("human");
+              setBotTyping(false);
             }
-            setMessages((prev) => {
-              if (prev.some((existingMsg) => existingMsg.id === m.id)) return prev;
-              return [...prev, toMsg(m)];
-            });
+            setMessages((prev) =>
+              prev.some((x) => x.id === m.id) ? prev : [...prev, fromDb(m)],
+            );
           },
         )
         .subscribe();
@@ -144,33 +284,66 @@ export default function ChatWidget() {
     };
   }, []);
 
-  async function sendMessage(text) {
-    const trimmed = text.trim();
-    if (!trimmed || !conversationId) return;
+  function addLocal(msg) {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `l-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        ts: Date.now(),
+        local: true,
+        options: null,
+        ...msg,
+      },
+    ]);
+  }
 
-    setInput("");
-
+  // Send a message to the live agent (saved in Supabase, shows in Admin → Chats)
+  async function sendToAdmin(text) {
+    if (!conversationId) return;
     const { data, error } = await supabase
       .from("messages")
-      .insert({
-        conversation_id: conversationId,
-        sender: "user",
-        text: trimmed,
-      })
+      .insert({ conversation_id: conversationId, sender: "user", text })
       .select()
       .single();
-
     if (error) {
       console.error("Failed to send message:", error.message);
       return;
     }
-
-    // Add immediately (realtime echo is de-duped by id in the handler above).
     setMessages((prev) =>
-      prev.some((x) => x.id === data.id) ? prev : [...prev, toMsg(data)],
+      prev.some((x) => x.id === data.id) ? prev : [...prev, fromDb(data)],
     );
-    // No "typing" bubble when a live agent has the chat
-    if (!humanMode) setWaiting(true);
+  }
+
+  function sendMessage(text) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setInput("");
+
+    // Live agent mode: straight to the admin, no bot
+    if (mode === "human") {
+      sendToAdmin(trimmed);
+      return;
+    }
+
+    const reply = getBotReply(trimmed, mode);
+
+    if (reply.handoff) {
+      sendToAdmin(trimmed); // admin sees the question or the live-agent request
+    } else {
+      addLocal({ from: "user", sender: "user", text: trimmed });
+    }
+
+    setBotTyping(true);
+    setTimeout(() => {
+      setBotTyping(false);
+      setMode(reply.nextMode);
+      addLocal({
+        from: "bot",
+        sender: "ai",
+        text: reply.text,
+        options: reply.options || null,
+      });
+    }, 700);
   }
 
   function handleKeyDown(e) {
@@ -179,9 +352,8 @@ export default function ChatWidget() {
 
   const showGreeting = messages.length === 0;
   const last = messages[messages.length - 1];
-  // Choice buttons from the latest AI message (only while it's the last message)
   const lastOptions =
-    last && last.sender === "ai" && Array.isArray(last.options)
+    mode !== "human" && !botTyping && last && last.sender === "ai" && last.options
       ? last.options
       : [];
 
@@ -308,7 +480,7 @@ export default function ChatWidget() {
               </div>
             ))}
 
-            {waiting && (
+            {botTyping && (
               <div className="chat-bubble-row bot">
                 <div className="chat-avatar">🤖</div>
                 <div className="chat-bubble bot" style={{ opacity: 0.7 }}>
@@ -320,7 +492,7 @@ export default function ChatWidget() {
             {/* Opening choices */}
             {ready && showGreeting && (
               <div className="chat-quick-replies">
-                {QUICK_REPLIES.map((qr) => (
+                {OPENING_BUTTONS.map((qr) => (
                   <button
                     key={qr}
                     className="chat-quick-reply-btn"
@@ -332,7 +504,7 @@ export default function ChatWidget() {
               </div>
             )}
 
-            {/* Choices offered by the AI */}
+            {/* Choices offered by the bot */}
             {lastOptions.length > 0 && (
               <div className="chat-quick-replies">
                 {lastOptions.map((opt) => (
@@ -355,13 +527,13 @@ export default function ChatWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={!userId}
+              disabled={!ready}
             />
             <button
               className="chat-send-btn"
               onClick={() => sendMessage(input)}
               aria-label="Send message"
-              disabled={!userId}
+              disabled={!ready}
             >
               ➤
             </button>
