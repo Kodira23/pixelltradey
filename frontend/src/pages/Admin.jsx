@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 
 // Only this Supabase user can open the admin panel
@@ -35,6 +35,10 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Lets the realtime handler see the latest conversations without re-subscribing
+  const convosRef = useRef([]);
+  convosRef.current = conversations;
+
   async function loadUsers() {
     const { data, error } = await supabase
       .from("profiles")
@@ -57,7 +61,8 @@ export default function Admin() {
     const { data, error } = await supabase
       .from("conversations")
       .select("*, profiles(email), messages(*)")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("created_at", { referencedTable: "messages", ascending: true });
     if (error) throw error;
     setConversations(data || []);
   }
@@ -90,6 +95,38 @@ export default function Admin() {
   useEffect(() => {
     loadAll();
   }, []);
+
+  // Live updates: user messages and AI replies show up without a refresh
+  useEffect(() => {
+    if (!authorized) return;
+    const channel = supabase
+      .channel("admin-messages")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload) => {
+          const m = payload.new;
+          // Brand-new conversation we haven't loaded yet
+          if (!convosRef.current.some((c) => c.id === m.conversation_id)) {
+            loadConversations().catch((e) => setError(e.message));
+            return;
+          }
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === m.conversation_id
+                ? c.messages.some((x) => x.id === m.id)
+                  ? c
+                  : { ...c, messages: [...c.messages, m] }
+                : c,
+            ),
+          );
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authorized]);
 
   // ---------- Users ----------
   async function toggleUserActive(user) {
@@ -165,12 +202,38 @@ export default function Admin() {
       .single();
     if (error) return setError(error.message);
 
+    // Realtime may deliver the same row, so de-dupe by id
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === selectedConvo ? { ...c, messages: [...c.messages, data] } : c,
+        c.id === selectedConvo
+          ? c.messages.some((x) => x.id === data.id)
+            ? c
+            : {
+                ...c,
+                messages: [...c.messages, data],
+                last_human_reply_at: new Date().toISOString(),
+              }
+          : c,
       ),
     );
     setReplyText("");
+  }
+
+  // Turn AI auto-reply on/off for one conversation.
+  // Turning it back on also clears the 10-minute human pause.
+  async function toggleAi(convo) {
+    const next = convo.ai_enabled === false;
+    const patch = next
+      ? { ai_enabled: true, last_human_reply_at: null }
+      : { ai_enabled: false };
+    const { error } = await supabase
+      .from("conversations")
+      .update(patch)
+      .eq("id", convo.id);
+    if (error) return setError(error.message);
+    setConversations((prev) =>
+      prev.map((c) => (c.id === convo.id ? { ...c, ...patch } : c)),
+    );
   }
 
   const activeConvo = conversations.find((c) => c.id === selectedConvo);
@@ -478,7 +541,9 @@ export default function Admin() {
                         {c.profiles?.email}
                       </div>
                       <div className="admin-convo-preview">
-                        {lastMsg?.text ?? "No messages yet"}
+                        {lastMsg
+                          ? `${lastMsg.sender === "ai" ? "🤖 " : ""}${lastMsg.text}`
+                          : "No messages yet"}
                       </div>
                     </button>
                   );
@@ -492,17 +557,39 @@ export default function Admin() {
                   </p>
                 ) : (
                   <>
-                    <h3>{activeConvo.profiles?.email}</h3>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
+                    >
+                      <h3>{activeConvo.profiles?.email}</h3>
+                      <button
+                        className={`admin-action-btn ${activeConvo.ai_enabled === false ? "deactivate" : "reactivate"}`}
+                        onClick={() => toggleAi(activeConvo)}
+                        title="AI also pauses itself for 10 minutes after you reply"
+                      >
+                        🤖 AI auto-reply:{" "}
+                        {activeConvo.ai_enabled === false ? "OFF" : "ON"}
+                      </button>
+                    </div>
                     <div className="admin-thread-messages">
                       {activeConvo.messages.map((m) => (
                         <div
                           key={m.id}
-                          className={`admin-thread-row ${m.sender === "admin" ? "admin" : "user"}`}
+                          className={`admin-thread-row ${m.sender === "user" ? "user" : "admin"}`}
                         >
                           <div className={`admin-thread-bubble ${m.sender}`}>
                             {m.text}
                           </div>
                           <div className="admin-thread-time">
+                            {m.sender === "ai"
+                              ? "🤖 AI · "
+                              : m.sender === "admin"
+                                ? "You · "
+                                : ""}
                             {new Date(m.created_at).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
