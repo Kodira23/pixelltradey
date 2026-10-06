@@ -3,6 +3,14 @@ import { supabase } from "../supabaseClient";
 
 const QUICK_REPLIES = ["I have a question", "Tell me more"];
 
+// 'user' stays on the right; 'admin' (human) and 'ai' both show as support
+const toMsg = (m) => ({
+  id: m.id,
+  from: m.sender === "user" ? "user" : "bot",
+  sender: m.sender,
+  text: m.text,
+});
+
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -12,10 +20,18 @@ export default function ChatWidget() {
   const [conversationId, setConversationId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [ready, setReady] = useState(false);
+  const [waiting, setWaiting] = useState(false);
   const channelRef = useRef(null);
 
+  // Hide the "typing" bubble if nobody answers within 12s
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setTimeout(() => setWaiting(false), 12000);
+    return () => clearTimeout(t);
+  }, [waiting]);
+
   // Bootstrap: get the logged-in user, find-or-create their conversation,
-  // load message history, then subscribe to new inserts (admin replies).
+  // load message history, then subscribe to new inserts (AI + admin replies).
   useEffect(() => {
     let cancelled = false;
 
@@ -25,14 +41,12 @@ export default function ChatWidget() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        // No logged-in user — widget still opens but can't persist chat.
         if (!cancelled) setReady(true);
         return;
       }
       if (cancelled) return;
       setUserId(user.id);
 
-      // Find an existing conversation for this user, or create one.
       let convoId = null;
       const { data: existing, error: findErr } = await supabase
         .from("conversations")
@@ -67,7 +81,6 @@ export default function ChatWidget() {
       }
       setConversationId(convoId);
 
-      // Load message history for this conversation.
       const { data: history, error: msgErr } = await supabase
         .from("messages")
         .select("*")
@@ -77,16 +90,10 @@ export default function ChatWidget() {
       if (msgErr) {
         console.error("Failed to load messages:", msgErr.message);
       } else if (!cancelled) {
-        setMessages(
-          (history || []).map((m) => ({
-            id: m.id,
-            from: m.sender === "admin" ? "bot" : "user",
-            text: m.text,
-          })),
-        );
+        setMessages((history || []).map(toMsg));
       }
 
-      // Realtime: pick up new messages (admin replies) as they arrive.
+      // Realtime: pick up new messages (AI and admin replies) as they arrive.
       const channel = supabase
         .channel(`messages:${convoId}`)
         .on(
@@ -99,12 +106,10 @@ export default function ChatWidget() {
           },
           (payload) => {
             const m = payload.new;
+            if (m.sender !== "user") setWaiting(false);
             setMessages((prev) => {
               if (prev.some((existingMsg) => existingMsg.id === m.id)) return prev;
-              return [
-                ...prev,
-                { id: m.id, from: m.sender === "admin" ? "bot" : "user", text: m.text },
-              ];
+              return [...prev, toMsg(m)];
             });
           },
         )
@@ -147,7 +152,10 @@ export default function ChatWidget() {
     }
 
     // Add immediately (realtime echo is de-duped by id in the handler above).
-    setMessages((prev) => [...prev, { id: data.id, from: "user", text: data.text }]);
+    setMessages((prev) =>
+      prev.some((x) => x.id === data.id) ? prev : [...prev, toMsg(data)],
+    );
+    setWaiting(true);
   }
 
   function handleKeyDown(e) {
@@ -258,10 +266,30 @@ export default function ChatWidget() {
                 key={m.id}
                 className={`chat-bubble-row ${m.from === "user" ? "user" : "bot"}`}
               >
-                {m.from === "bot" && <div className="chat-avatar">🎧</div>}
-                <div className={`chat-bubble ${m.from}`}>{m.text}</div>
+                {m.from === "bot" && (
+                  <div className="chat-avatar">
+                    {m.sender === "ai" ? "🤖" : "🎧"}
+                  </div>
+                )}
+                <div className={`chat-bubble ${m.from}`}>
+                  {m.text}
+                  {m.sender === "ai" && (
+                    <div style={{ fontSize: 10, opacity: 0.6, marginTop: 4 }}>
+                      AI assistant
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
+
+            {waiting && (
+              <div className="chat-bubble-row bot">
+                <div className="chat-avatar">🤖</div>
+                <div className="chat-bubble bot" style={{ opacity: 0.7 }}>
+                  Typing…
+                </div>
+              </div>
+            )}
 
             {ready && showGreeting && (
               <div className="chat-quick-replies">
