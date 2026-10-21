@@ -179,7 +179,7 @@ export default function Landing() {
         .vtx-split h2 { font-size: clamp(32px, 4.2vw, 52px); line-height: 1.1; letter-spacing: -0.03em; font-weight: 700; max-width: 14em; }
         .vtx-split p { margin: 20px 0 0; color: var(--muted); font-size: 18px; line-height: 1.6; max-width: 30em; }
         .vtx-split-art { display: flex; justify-content: center; }
-        .vtx-phone { display: block; width: min(100%, 320px); height: auto; box-sizing: border-box; border: 10px solid #111; border-radius: 46px; background: #000; box-shadow: 0 0 0 2px #2c2c2c, 0 0 0 5px #0a0a0a, 0 30px 90px rgba(91,110,245,0.22); }
+        .vtx-split-img { display: block; width: 100%; height: auto; box-sizing: border-box; border: 1px solid var(--accent-line); border-radius: 18px; background: #000; box-shadow: 0 30px 90px rgba(91,110,245,0.22); }
 
         /* prices */
         .vtx-prices { max-width: 1500px; margin: 0 auto; padding: 30px 52px 110px; }
@@ -257,7 +257,7 @@ export default function Landing() {
           .vtx-snapshot-quote b { font-size: 14px; }
           .vtx-perk { padding: 20px; }
           .vtx-perk h3 { margin-top: 20px; }
-          .vtx-phone { width: min(100%, 250px); border-width: 8px; border-radius: 36px; }
+          .vtx-split-img { border-radius: 14px; }
           .vtx-prices-table { min-width: 620px; }
           .vtx-prices-table th { padding: 12px 10px; font-size: 13px; }
           .vtx-prices-table td { padding: 14px 10px; font-size: 14px; }
@@ -401,7 +401,7 @@ export default function Landing() {
             </p>
           </div>
           <div className="vtx-split-art">
-            <img className="vtx-phone" src={phoneImage} alt="VantyxTrade mobile app" loading="lazy" />
+            <img className="vtx-split-img" src={phoneImage} alt="VantyxTrade mobile app" loading="lazy" />
           </div>
         </section>
 
