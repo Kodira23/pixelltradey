@@ -16,8 +16,6 @@ const COUNTRIES = [
 ];
 
 export default function Signup() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [country, setCountry] = useState("US");
   const [phone, setPhone] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -43,8 +41,6 @@ export default function Signup() {
       options: {
         data: {
           username,
-          first_name: firstName,
-          last_name: lastName,
           phone: `${dial}${phone.replace(/\D/g, "")}`,
         },
       },
@@ -168,8 +164,6 @@ export default function Signup() {
         .auth__card input:focus,
         .auth__card select:focus { border-color: var(--a-accent); outline: none; }
 
-        .auth__row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
         /* Phone: country select + dial code + number */
         .auth__label { font-size: 14px; font-weight: 600; line-height: 20px; color: var(--a-text); }
         .auth__phone { display: grid; grid-template-columns: 58px 1fr; gap: 8px; }
@@ -234,9 +228,6 @@ export default function Signup() {
           .auth { padding: 52px 12px 16px; }
           .auth__logo img { height: 80px; }
         }
-        @media (max-width: 380px) {
-          .auth__row { grid-template-columns: 1fr; }
-        }
       `}</style>
 
     <div className="auth">
@@ -255,31 +246,6 @@ export default function Signup() {
         <div className="auth__head">
           <h1>Create an account</h1>
           <p>Start accumulating with VantyxTrade</p>
-        </div>
-
-        <div className="auth__row">
-          <label>
-            First Name
-            <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="John"
-              autoComplete="given-name"
-              required
-            />
-          </label>
-          <label>
-            Last Name
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Doe"
-              autoComplete="family-name"
-              required
-            />
-          </label>
         </div>
 
         <label>
