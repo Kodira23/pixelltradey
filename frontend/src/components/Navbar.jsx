@@ -12,7 +12,7 @@ export default function Navbar() {
           --vtx-bar-h: 56px;
           /* logo height: width follows the image. It overflows the bar downward
              instead of making the bar taller (same approach as the landing header). */
-          --vtx-logo-h: 72px;
+          --vtx-logo-h: 84px;
           --vtx-logo-top: 4px;
 
           position: fixed;
@@ -29,7 +29,7 @@ export default function Navbar() {
           background: rgba(10, 14, 26, 0.92);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
-          border-bottom: 1px solid #262f4a;
+          border-bottom: 0;
         }
 
         /* logo box: bar height, aligned to the top, so a taller logo overflows downward only */
@@ -108,7 +108,7 @@ export default function Navbar() {
         /* Phone */
         @media (max-width: 600px) {
           .vtx-nav {
-            --vtx-logo-h: 60px;
+            --vtx-logo-h: 70px;
             --vtx-logo-top: 3px;
             padding-top: env(safe-area-inset-top);
             height: calc(var(--vtx-bar-h) + env(safe-area-inset-top));
