@@ -1,6 +1,6 @@
 // Navbar.jsx
 import { Link } from "react-router-dom";
-import logo from "../vanlogo.png";
+import logo from "../vt.png";
 
 export default function Navbar() {
   return (
