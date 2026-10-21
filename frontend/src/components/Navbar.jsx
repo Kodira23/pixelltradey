@@ -36,7 +36,6 @@ export default function Navbar() {
         .vtx-nav-logo {
           display: flex;
           align-items: flex-start;
-          gap: 10px;
           height: var(--vtx-bar-h);
           text-decoration: none;
           flex-shrink: 0;
@@ -49,15 +48,10 @@ export default function Navbar() {
           max-width: 100%;
           flex-shrink: 0;
           margin-top: var(--vtx-logo-top);
-        }
-        .vtx-nav-logo-text {
-          align-self: center;
-          font-family: "Poppins", sans-serif;
-          font-weight: 800;
-          font-size: 22px;
-          color: var(--vtx-blue);
-          line-height: 1;
-          white-space: nowrap;
+          /* makes the near-black background of the logo transparent
+             (alpha = 3 * (r + g + b) - 0.9). Raise 0.9 if a faint box remains,
+             lower it if dark edges of the logo fade. */
+          filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='k' color-interpolation-filters='sRGB'%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 3 3 3 0 -0.9'/%3E%3C/filter%3E%3C/svg%3E#k");
         }
 
         .vtx-nav-actions {
@@ -119,23 +113,15 @@ export default function Navbar() {
             padding-top: env(safe-area-inset-top);
             height: calc(var(--vtx-bar-h) + env(safe-area-inset-top));
           }
-          .vtx-nav-logo { gap: 6px; }
-          .vtx-nav-logo-text { font-size: 17px; }
           .vtx-nav-actions { gap: 12px; }
           .vtx-nav-signin { font-size: 13px; }
           .vtx-nav-start { padding: 8px 14px; font-size: 13px; }
-        }
-
-        /* Very narrow phones (~360px wide): hide the wordmark, keep the logo */
-        @media (max-width: 380px) {
-          .vtx-nav-logo-text { display: none; }
         }
       `}</style>
 
       <nav className="vtx-nav">
         <Link to="/" className="vtx-nav-logo" aria-label="VantyxTrade home">
           <img src={logo} alt="VantyxTrade" />
-          <span className="vtx-nav-logo-text">VantyxTrade</span>
         </Link>
 
         <div className="vtx-nav-actions">
