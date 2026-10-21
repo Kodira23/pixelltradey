@@ -105,6 +105,13 @@ const ICONS = {
       <path d="m21 21-4.3-4.3" />
     </>
   ),
+  download: (
+    <>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M12 15V3" />
+    </>
+  ),
   menu: (
     <>
       <line x1="3" y1="6" x2="21" y2="6" />
@@ -130,7 +137,8 @@ const links = [
 ];
 
 /* ------------------------------------------------------------------
-   Inline styles (blue accent comes from --accent in your global CSS)
+   Styles (navbar layout, blue accent comes from --accent in your
+   global CSS, fonts are inherited exactly as before)
 ------------------------------------------------------------------- */
 
 // Makes the logo's near-black background transparent:
@@ -143,16 +151,17 @@ const css = `
 .sb,
 .sb-drawer,
 .sb-overlay {
-  --sb-bg: var(--bg, #0a0e1a);
-  --sb-surface: var(--panel, #121a2e);
-  --sb-border: var(--border, #262f4a);
-  --sb-text: #a3abc9;
-  --sb-text-strong: #f2f4fb;
+  --sb-bg: #050505;
+  --sb-surface: #111312;
+  --sb-border: #232625;
+  --sb-text: #a3a8a5;
+  --sb-text-strong: #f2f4f3;
   --sb-blue: var(--accent, #5b6ef5);
-  --sb-blue-bg: rgba(91, 110, 245, 0.14);
-  --sb-blue-border: rgba(91, 110, 245, 0.4);
-  --sb-red: #ff4d5e;
+  --sb-blue-bg: color-mix(in srgb, var(--sb-blue) 12%, transparent);
+  --sb-blue-border: color-mix(in srgb, var(--sb-blue) 28%, transparent);
+  --sb-red: #ff3b4e;
   --sb-h: 56px;
+  /* logo height (width follows the image's own proportions) */
   --sb-logo-h: 50px;
 }
 
@@ -174,7 +183,7 @@ const css = `
   overflow: hidden;
 }
 
-/* logo: fixed height, width follows the image, background keyed out */
+/* logo box: bar-height and centered, so the logo sits on the same line as the links */
 .sb__logo {
   display: flex;
   align-items: center;
@@ -188,7 +197,6 @@ const css = `
   width: auto;
   max-width: 100%;
   flex-shrink: 0;
-  border-radius: 0;
   filter: ${LOGO_KEY_FILTER};
 }
 
@@ -231,7 +239,7 @@ const css = `
   border-color: var(--sb-blue-border);
 }
 
-/* search grows to fill the space before the right cluster */
+/* search grows to fill the space up to Get App */
 .sb__search {
   display: flex;
   align-items: center;
@@ -276,6 +284,8 @@ const css = `
   gap: 8px;
   flex-shrink: 0;
 }
+
+.sb__app,
 .sb__balance {
   display: inline-flex;
   align-items: center;
@@ -285,22 +295,34 @@ const css = `
   background: var(--sb-surface);
   border: 1px solid var(--sb-border);
   border-radius: 8px;
-  color: var(--sb-text-strong);
+  color: var(--sb-text);
   font-size: 13px;
-  font-weight: 600;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 500;
+  font-family: inherit;
   text-decoration: none;
+  cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, color 0.15s;
 }
+.sb__app svg,
 .sb__balance svg {
   width: 16px;
   height: 16px;
-  color: var(--sb-blue);
   flex-shrink: 0;
 }
+.sb__app:hover,
 .sb__balance:hover {
-  border-color: var(--sb-blue-border);
+  color: var(--sb-text-strong);
+  border-color: #353a37;
+}
+
+.sb__balance {
+  color: var(--sb-text-strong);
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.sb__balance svg {
+  color: var(--sb-blue);
 }
 
 .sb__icon {
@@ -308,8 +330,7 @@ const css = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-width: 36px;
+  width: 36px;
   height: 36px;
   padding: 0;
   background: transparent;
@@ -336,28 +357,36 @@ const css = `
 .sb__icon--red {
   color: var(--sb-red);
 }
-.sb__name {
-  font-size: 13px;
-  font-weight: 600;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+.sb__badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sb-blue);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
 }
-.sb__icon--user {
-  padding: 0 8px;
-}
+
 .sb__burger {
   display: none;
 }
 
-/* drawer is hidden on desktop */
+/* ---------- Drawer (hidden on desktop) ---------- */
 .sb-drawer,
 .sb-overlay {
   display: none;
 }
 
-/* ---------- slightly tighter on large laptops ---------- */
+/* ---------- Step 1: slightly tighter on large laptops ---------- */
 @media (max-width: 1560px) {
   .sb {
     gap: 16px;
@@ -367,6 +396,8 @@ const css = `
     padding: 0 11px;
   }
 }
+
+/* ---------- Step 2: standard laptops ---------- */
 @media (max-width: 1440px) {
   .sb {
     gap: 12px;
@@ -385,20 +416,27 @@ const css = `
   .sb__right {
     gap: 6px;
   }
+  .sb__app,
   .sb__balance {
     padding: 0 12px;
   }
-  .sb__name {
-    display: none;
-  }
 }
+
+/* ---------- Step 3: Get App becomes icon only ---------- */
 @media (max-width: 1300px) {
   .sb__link {
     padding: 0 8px;
   }
+  .sb__app {
+    font-size: 0;
+    gap: 0;
+    padding: 0;
+    width: 36px;
+    justify-content: center;
+  }
 }
 
-/* ---------- mobile / tablet ---------- */
+/* ---------- Mobile / tablet ---------- */
 @media (max-width: 1180px) {
   .sb,
   .sb-drawer,
@@ -406,26 +444,25 @@ const css = `
     --sb-h: 54px;
     --sb-logo-h: 46px;
   }
+
   .sb {
     padding: 0 12px 0 6px;
     gap: 6px;
   }
+
   .sb__links,
   .sb__search,
-  .sb__hide-mobile {
+  .sb__app,
+  .sb__balance {
     display: none;
   }
+
   .sb__right {
     margin-left: auto;
-    gap: 4px;
-  }
-  .sb__balance {
-    height: 34px;
-    padding: 0 10px;
-    font-size: 12.5px;
+    gap: 2px;
   }
   .sb__icon {
-    min-width: 34px;
+    width: 34px;
     height: 34px;
   }
   .sb__burger {
@@ -457,7 +494,7 @@ const css = `
     z-index: 1110;
     width: min(78vw, 300px);
     padding: 18px 18px 24px;
-    background: var(--sb-bg);
+    background: #0b0c0b;
     border-left: 1px solid var(--sb-border);
     overflow-y: auto;
     transform: translateX(100%);
@@ -468,6 +505,7 @@ const css = `
     transform: translateX(0);
     visibility: visible;
   }
+
   .sb-drawer__head {
     display: flex;
     align-items: center;
@@ -496,6 +534,7 @@ const css = `
     color: var(--sb-text-strong);
     background: var(--sb-surface);
   }
+
   .sb-drawer__nav {
     display: flex;
     flex-direction: column;
@@ -505,19 +544,15 @@ const css = `
     display: flex;
     align-items: center;
     gap: 12px;
-    width: 100%;
     height: 42px;
     padding: 0 14px;
-    background: none;
     border: 1px solid transparent;
     border-radius: 10px;
     color: var(--sb-text);
     font-size: 15px;
     font-weight: 500;
     font-family: inherit;
-    text-align: left;
     text-decoration: none;
-    cursor: pointer;
     transition: color 0.15s, background 0.15s;
   }
   .sb-drawer__link:hover {
@@ -531,27 +566,40 @@ const css = `
   .sb-drawer__link--accent {
     color: var(--sb-blue);
   }
-  .sb-drawer__link--red {
-    color: var(--sb-red);
-  }
-  .sb-drawer__name {
-    padding: 0 14px 12px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--sb-text-strong);
-  }
+
   .sb-drawer__divider {
     height: 1px;
     margin: 14px 0;
     background: var(--sb-border);
   }
+
+  .sb-drawer__balance {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 14px;
+    margin-bottom: 10px;
+    background: var(--sb-surface);
+    border: 1px solid var(--sb-border);
+    border-radius: 10px;
+    color: var(--sb-text-strong);
+    font-size: 15px;
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    text-decoration: none;
+  }
+  .sb-drawer__balance svg {
+    color: var(--sb-blue);
+  }
+
   .sb-drawer__search {
     display: flex;
     align-items: center;
     gap: 10px;
     height: 44px;
     padding: 0 14px;
-    margin-top: 10px;
+    margin-bottom: 10px;
     background: var(--sb-surface);
     border: 1px solid var(--sb-border);
     border-radius: 10px;
@@ -573,6 +621,40 @@ const css = `
   .sb-drawer__search input::placeholder {
     color: var(--sb-text);
   }
+
+  .sb-drawer__stores {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sb-drawer__store {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 48px;
+    padding: 0 14px;
+    background: #000;
+    border: 1px solid #3a3d3b;
+    border-radius: 10px;
+    color: var(--sb-text-strong);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .sb-drawer__store span {
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+  .sb-drawer__store small {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--sb-text);
+  }
 }
 
 @media (max-width: 380px) {
@@ -581,9 +663,8 @@ const css = `
   .sb-overlay {
     --sb-logo-h: 40px;
   }
-  .sb__balance {
-    padding: 0 8px;
-    font-size: 12px;
+  .sb__icon {
+    width: 32px;
   }
 }
 `;
@@ -591,15 +672,17 @@ const css = `
 /* ------------------------------------------------------------------
    Component
 ------------------------------------------------------------------- */
-export default function Sidebar() {
+export default function Sidebar({ onGetApp }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   // Same balance the Dashboard shows (profiles.balance), kept live via realtime
+  const [userId, setUserId] = useState(null);
   const [balance, setBalance] = useState(null);
   const [displayName, setDisplayName] = useState("");
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -611,6 +694,7 @@ export default function Sidebar() {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user || cancelled) return;
+        setUserId(user.id);
 
         const { data, error } = await supabase
           .from("profiles")
@@ -655,6 +739,30 @@ export default function Sidebar() {
     };
   }, []);
 
+  // unread notification count for the bell badge (refreshes on page change)
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    async function loadUnread() {
+      try {
+        const { count, error } = await supabase
+          .from("notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("read", false);
+        if (!error && !cancelled) setUnread(count || 0);
+      } catch {
+        /* badge simply stays hidden if the table isn't available */
+      }
+    }
+
+    loadUnread();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, location.pathname]);
+
   // close the drawer whenever the page changes
   useEffect(() => {
     setMenuOpen(false);
@@ -685,6 +793,13 @@ export default function Sidebar() {
     navigate(q ? `/markets?q=${encodeURIComponent(q)}` : "/markets");
   }
 
+  function handleGetApp() {
+    setMenuOpen(false);
+    if (onGetApp) onGetApp();
+    else navigate("/get-app");
+  }
+
+  const balanceText = balance === null ? "…" : `$${balance.toFixed(2)}`;
   const linkClass = ({ isActive }) => `sb__link ${isActive ? "is-active" : ""}`;
   const drawerLinkClass = ({ isActive }) =>
     `sb-drawer__link ${isActive ? "is-active" : ""}`;
@@ -719,14 +834,24 @@ export default function Sidebar() {
         </form>
 
         <div className="sb__right">
+          <button
+            className="sb__app"
+            onClick={handleGetApp}
+            aria-label="Get App"
+            type="button"
+          >
+            <Svg size={16}>{ICONS.download}</Svg>
+            <span>Get App</span>
+          </button>
+
           <Link to="/deposit" className="sb__balance" title="Available balance">
             <Svg size={16}>{ICONS.wallet}</Svg>
-            <span>{balance === null ? "…" : `$${balance.toFixed(2)}`}</span>
+            <span>{balanceText}</span>
           </Link>
 
           <Link
             to="/verify"
-            className="sb__icon sb__icon--blue sb__hide-mobile"
+            className="sb__icon sb__icon--blue"
             aria-label="Verify identity"
           >
             <Svg size={18}>{ICONS.shield}</Svg>
@@ -738,22 +863,22 @@ export default function Sidebar() {
             aria-label="Notifications"
           >
             <Svg size={18}>{ICONS.bell}</Svg>
+            {unread > 0 && (
+              <span className="sb__badge">{unread > 9 ? "9+" : unread}</span>
+            )}
           </Link>
 
           <Link
             to="/profile"
-            className={`sb__icon ${displayName ? "sb__icon--user" : ""}`}
+            className="sb__icon"
             aria-label="Profile"
             title={displayName || "Profile"}
           >
             <Svg size={18}>{ICONS.user}</Svg>
-            {displayName && (
-              <span className="sb__name sb__hide-mobile">{displayName}</span>
-            )}
           </Link>
 
           <button
-            className="sb__icon sb__icon--red sb__hide-mobile"
+            className="sb__icon sb__icon--red"
             onClick={handleSignOut}
             aria-label="Sign out"
             type="button"
@@ -794,8 +919,6 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {displayName && <div className="sb-drawer__name">{displayName}</div>}
-
         <nav className="sb-drawer__nav">
           {links.map((l) => (
             <NavLink key={l.to} to={l.to} className={drawerLinkClass}>
@@ -803,14 +926,6 @@ export default function Sidebar() {
               <span>{l.label}</span>
             </NavLink>
           ))}
-          <NavLink to="/notifications" className={drawerLinkClass}>
-            <Svg size={18}>{ICONS.bell}</Svg>
-            <span>Notifications</span>
-          </NavLink>
-          <NavLink to="/profile" className={drawerLinkClass}>
-            <Svg size={18}>{ICONS.user}</Svg>
-            <span>Profile</span>
-          </NavLink>
           <NavLink
             to="/verify"
             className="sb-drawer__link sb-drawer__link--accent"
@@ -822,17 +937,10 @@ export default function Sidebar() {
 
         <div className="sb-drawer__divider" />
 
-        <button
-          className="sb-drawer__link sb-drawer__link--red"
-          onClick={() => {
-            setMenuOpen(false);
-            handleSignOut();
-          }}
-          type="button"
-        >
-          <Svg size={18}>{ICONS.logout}</Svg>
-          <span>Sign Out</span>
-        </button>
+        <Link to="/deposit" className="sb-drawer__balance">
+          <Svg size={18}>{ICONS.wallet}</Svg>
+          <span>{balanceText}</span>
+        </Link>
 
         <form className="sb-drawer__search" onSubmit={onSearch} role="search">
           <Svg size={18}>{ICONS.search}</Svg>
@@ -844,6 +952,33 @@ export default function Sidebar() {
             aria-label="Search markets"
           />
         </form>
+
+        <div className="sb-drawer__divider" />
+
+        <div className="sb-drawer__stores">
+          <button
+            className="sb-drawer__store"
+            onClick={handleGetApp}
+            type="button"
+          >
+            <Svg size={22}>{ICONS.download}</Svg>
+            <span>
+              <small>Download on the</small>
+              App Store
+            </span>
+          </button>
+          <button
+            className="sb-drawer__store"
+            onClick={handleGetApp}
+            type="button"
+          >
+            <Svg size={22}>{ICONS.download}</Svg>
+            <span>
+              <small>Get it on</small>
+              Google Play
+            </span>
+          </button>
+        </div>
       </aside>
     </>
   );
