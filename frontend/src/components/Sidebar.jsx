@@ -1,97 +1,601 @@
 import { useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import logo from "../vanlogo.png";
 
+/* ------------------------------------------------------------------
+   Icons (inline SVG, so no extra package is needed)
+------------------------------------------------------------------- */
+function Svg({ size = 16, children }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
+
+const ICONS = {
+  dashboard: (
+    <>
+      <rect x="3" y="3" width="7" height="9" rx="1" />
+      <rect x="14" y="3" width="7" height="5" rx="1" />
+      <rect x="14" y="12" width="7" height="9" rx="1" />
+      <rect x="3" y="16" width="7" height="5" rx="1" />
+    </>
+  ),
+  markets: (
+    <>
+      <path d="M3 3v18h18" />
+      <path d="M18 9l-5 5-4-4-4 4" />
+    </>
+  ),
+  spot: (
+    <>
+      <path d="M17 3 21 7l-4 4" />
+      <path d="M3 11V9a2 2 0 0 1 2-2h16" />
+      <path d="M7 21 3 17l4-4" />
+      <path d="M21 13v2a2 2 0 0 1-2 2H3" />
+    </>
+  ),
+  deposit: (
+    <>
+      <path d="M7 17 17 7" />
+      <path d="M7 7h10v10" />
+    </>
+  ),
+  withdraw: (
+    <>
+      <path d="M17 7 7 17" />
+      <path d="M17 17H7V7" />
+    </>
+  ),
+  bots: (
+    <>
+      <rect x="4" y="8" width="16" height="12" rx="2" />
+      <path d="M12 8V4" />
+      <circle cx="12" cy="4" r="1" />
+      <path d="M9 13v2" />
+      <path d="M15 13v2" />
+    </>
+  ),
+  wallet: (
+    <>
+      <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
+      <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+    </>
+  ),
+  bell: (
+    <>
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </>
+  ),
+  user: (
+    <>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+      <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </>
+  ),
+  menu: (
+    <>
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </>
+  ),
+  close: (
+    <>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </>
+  ),
+};
+
 const links = [
-  {
-    to: "/dashboard",
-    label: "Dashboard",
-    icon: (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="3" y="3" width="7" height="9" rx="1" />
-        <rect x="14" y="3" width="7" height="5" rx="1" />
-        <rect x="14" y="12" width="7" height="9" rx="1" />
-        <rect x="3" y="16" width="7" height="5" rx="1" />
-      </svg>
-    ),
-  },
-  {
-    to: "/markets",
-    label: "Markets",
-    icon: (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M3 3v18h18" />
-        <path d="M18 9l-5 5-4-4-4 4" />
-      </svg>
-    ),
-  },
-  {
-    to: "/spot",
-    label: "Spot",
-    icon: (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M17 3 21 7l-4 4" />
-        <path d="M3 11V9a2 2 0 0 1 2-2h16" />
-        <path d="M7 21 3 17l4-4" />
-        <path d="M21 13v2a2 2 0 0 1-2 2H3" />
-      </svg>
-    ),
-  },
-  {
-    to: "/bots",
-    label: "Bots",
-    icon: (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="4" y="8" width="16" height="12" rx="2" />
-        <path d="M12 8V4" />
-        <circle cx="12" cy="4" r="1" />
-        <path d="M9 13v2" />
-        <path d="M15 13v2" />
-      </svg>
-    ),
-  },
+  { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
+  { to: "/spot", label: "Trade", icon: "spot" },
+  { to: "/markets", label: "Markets", icon: "markets" },
+  { to: "/deposit", label: "Deposit", icon: "deposit" },
+  { to: "/withdraw", label: "Withdraw", icon: "withdraw" },
+  { to: "/bots", label: "Bots", icon: "bots" },
 ];
 
+/* ------------------------------------------------------------------
+   Inline styles (blue accent comes from --accent in your global CSS)
+------------------------------------------------------------------- */
+
+// Makes the logo's near-black background transparent:
+// alpha = 3 * (r + g + b) - 0.9. Raise 0.9 if a faint box remains,
+// lower it if the dark edges of the logo start to fade.
+const LOGO_KEY_FILTER =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='k' color-interpolation-filters='sRGB'%3E%3CfeColorMatrix type='matrix' values='1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 3 3 3 0 -0.9'/%3E%3C/filter%3E%3C/svg%3E#k\")";
+
+const css = `
+.sb,
+.sb-drawer,
+.sb-overlay {
+  --sb-bg: var(--bg, #0a0e1a);
+  --sb-surface: var(--panel, #121a2e);
+  --sb-border: var(--border, #262f4a);
+  --sb-text: #a3abc9;
+  --sb-text-strong: #f2f4fb;
+  --sb-blue: var(--accent, #5b6ef5);
+  --sb-blue-bg: rgba(91, 110, 245, 0.14);
+  --sb-blue-border: rgba(91, 110, 245, 0.4);
+  --sb-red: #ff4d5e;
+  --sb-h: 56px;
+  --sb-logo-h: 50px;
+}
+
+/* ---------- Header ---------- */
+.sb {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: var(--sb-h);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 24px 0 12px;
+  background: var(--sb-bg);
+  border-bottom: 1px solid var(--sb-border);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* logo: fixed height, width follows the image, background keyed out */
+.sb__logo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  height: var(--sb-h);
+}
+.sb__logo img {
+  display: block;
+  height: var(--sb-logo-h);
+  width: auto;
+  max-width: 100%;
+  flex-shrink: 0;
+  border-radius: 0;
+  filter: ${LOGO_KEY_FILTER};
+}
+
+.sb__links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.sb__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: var(--sb-text);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  outline: none;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.sb__link svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.sb__link:hover {
+  color: var(--sb-text-strong);
+}
+.sb__link:focus-visible {
+  border-color: var(--sb-blue-border);
+}
+.sb__link.is-active {
+  color: var(--sb-blue);
+  background: var(--sb-blue-bg);
+  border-color: var(--sb-blue-border);
+}
+
+/* search grows to fill the space before the right cluster */
+.sb__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 110px;
+  height: 36px;
+  padding: 0 14px;
+  margin-left: 8px;
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  border-radius: 8px;
+  color: var(--sb-text);
+  transition: border-color 0.15s;
+}
+.sb__search svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.sb__search:focus-within {
+  border-color: var(--sb-blue-border);
+}
+.sb__search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--sb-text-strong);
+  font-size: 13px;
+  font-family: inherit;
+}
+.sb__search input::placeholder {
+  color: var(--sb-text);
+}
+
+/* right cluster */
+.sb__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.sb__balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  border-radius: 8px;
+  color: var(--sb-text-strong);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+.sb__balance svg {
+  width: 16px;
+  height: 16px;
+  color: var(--sb-blue);
+  flex-shrink: 0;
+}
+.sb__balance:hover {
+  border-color: var(--sb-blue-border);
+}
+
+.sb__icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--sb-text-strong);
+  cursor: pointer;
+  text-decoration: none;
+  outline: none;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.sb__icon svg {
+  width: 18px;
+  height: 18px;
+}
+.sb__icon:hover,
+.sb__icon:focus-visible {
+  background: var(--sb-surface);
+}
+.sb__icon--blue {
+  color: var(--sb-blue);
+}
+.sb__icon--red {
+  color: var(--sb-red);
+}
+.sb__name {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb__icon--user {
+  padding: 0 8px;
+}
+.sb__burger {
+  display: none;
+}
+
+/* drawer is hidden on desktop */
+.sb-drawer,
+.sb-overlay {
+  display: none;
+}
+
+/* ---------- slightly tighter on large laptops ---------- */
+@media (max-width: 1560px) {
+  .sb {
+    gap: 16px;
+    padding: 0 20px 0 12px;
+  }
+  .sb__link {
+    padding: 0 11px;
+  }
+}
+@media (max-width: 1440px) {
+  .sb {
+    gap: 12px;
+    padding: 0 16px 0 12px;
+  }
+  .sb__links {
+    gap: 4px;
+  }
+  .sb__link {
+    padding: 0 9px;
+    gap: 6px;
+  }
+  .sb__search {
+    margin-left: 0;
+  }
+  .sb__right {
+    gap: 6px;
+  }
+  .sb__balance {
+    padding: 0 12px;
+  }
+  .sb__name {
+    display: none;
+  }
+}
+@media (max-width: 1300px) {
+  .sb__link {
+    padding: 0 8px;
+  }
+}
+
+/* ---------- mobile / tablet ---------- */
+@media (max-width: 1180px) {
+  .sb,
+  .sb-drawer,
+  .sb-overlay {
+    --sb-h: 54px;
+    --sb-logo-h: 46px;
+  }
+  .sb {
+    padding: 0 12px 0 6px;
+    gap: 6px;
+  }
+  .sb__links,
+  .sb__search,
+  .sb__hide-mobile {
+    display: none;
+  }
+  .sb__right {
+    margin-left: auto;
+    gap: 4px;
+  }
+  .sb__balance {
+    height: 34px;
+    padding: 0 10px;
+    font-size: 12.5px;
+  }
+  .sb__icon {
+    min-width: 34px;
+    height: 34px;
+  }
+  .sb__burger {
+    display: inline-flex;
+  }
+
+  .sb-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .sb-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sb-drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1110;
+    width: min(78vw, 300px);
+    padding: 18px 18px 24px;
+    background: var(--sb-bg);
+    border-left: 1px solid var(--sb-border);
+    overflow-y: auto;
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 0.28s ease, visibility 0.28s;
+  }
+  .sb-drawer.is-open {
+    transform: translateX(0);
+    visibility: visible;
+  }
+  .sb-drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .sb-drawer__head h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--sb-text-strong);
+  }
+  .sb-drawer__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    color: var(--sb-text);
+    cursor: pointer;
+  }
+  .sb-drawer__close:hover {
+    color: var(--sb-text-strong);
+    background: var(--sb-surface);
+  }
+  .sb-drawer__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sb-drawer__link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: var(--sb-text);
+    font-size: 15px;
+    font-weight: 500;
+    font-family: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+  .sb-drawer__link:hover {
+    color: var(--sb-text-strong);
+  }
+  .sb-drawer__link.is-active {
+    color: var(--sb-blue);
+    background: var(--sb-blue-bg);
+    border-color: var(--sb-blue-border);
+  }
+  .sb-drawer__link--accent {
+    color: var(--sb-blue);
+  }
+  .sb-drawer__link--red {
+    color: var(--sb-red);
+  }
+  .sb-drawer__name {
+    padding: 0 14px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--sb-text-strong);
+  }
+  .sb-drawer__divider {
+    height: 1px;
+    margin: 14px 0;
+    background: var(--sb-border);
+  }
+  .sb-drawer__search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 14px;
+    margin-top: 10px;
+    background: var(--sb-surface);
+    border: 1px solid var(--sb-border);
+    border-radius: 10px;
+    color: var(--sb-text);
+  }
+  .sb-drawer__search:focus-within {
+    border-color: var(--sb-blue-border);
+  }
+  .sb-drawer__search input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    color: var(--sb-text-strong);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .sb-drawer__search input::placeholder {
+    color: var(--sb-text);
+  }
+}
+
+@media (max-width: 380px) {
+  .sb,
+  .sb-drawer,
+  .sb-overlay {
+    --sb-logo-h: 40px;
+  }
+  .sb__balance {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}
+`;
+
+/* ------------------------------------------------------------------
+   Component
+------------------------------------------------------------------- */
 export default function Sidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   // Same balance the Dashboard shows (profiles.balance), kept live via realtime
   const [balance, setBalance] = useState(null);
@@ -151,181 +655,196 @@ export default function Sidebar() {
     };
   }, []);
 
+  // close the drawer whenever the page changes
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  // lock page scroll + Escape key while the drawer is open
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => e.key === "Escape" && setMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     navigate("/");
   }
 
-  function closeMenu() {
+  function onSearch(e) {
+    e.preventDefault();
+    const q = query.trim();
     setMenuOpen(false);
+    navigate(q ? `/markets?q=${encodeURIComponent(q)}` : "/markets");
   }
 
+  const linkClass = ({ isActive }) => `sb__link ${isActive ? "is-active" : ""}`;
+  const drawerLinkClass = ({ isActive }) =>
+    `sb-drawer__link ${isActive ? "is-active" : ""}`;
+
   return (
-    <header className="app-header">
-      <div className="container app-header-inner">
-        <div className="app-header-actions">
-          {/* Notifications */}
-          <button
-            type="button"
-            className="app-header-user app-header-bell"
-            aria-label="Notifications"
-            style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              color: "inherit",
-              display: "inline-flex",
-              alignItems: "center",
-            }}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-          </button>
+    <>
+      <style>{css}</style>
 
-          {/* Balance, sits just before the user icon */}
-          <span
-            className="app-header-balance mono"
-            title="Available balance"
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-              padding: "4px 10px",
-              borderRadius: 999,
-              border: "1px solid var(--border, rgba(255,255,255,0.12))",
-            }}
-          >
-            {balance === null ? "…" : `$${balance.toFixed(2)}`}
-          </span>
+      <header className="sb">
+        <Link to="/dashboard" className="sb__logo">
+          <img src={logo} alt="VantyxTrade" />
+        </Link>
 
-          <span className="app-header-user" aria-label="Account">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </span>
-          {displayName && (
-            <span
-              className="app-header-name"
-              title={displayName}
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                maxWidth: 140,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {displayName}
-            </span>
-          )}
-          <button
-            className="btn btn-ghost desktop-signout"
-            onClick={handleSignOut}
-          >
-            Sign out
-          </button>
-        </div>
-
-        <button
-          className="menu-toggle"
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Toggle menu"
-          aria-expanded={menuOpen}
-        >
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
-
-        <div className="logo">
-          <img
-            src={logo}
-            alt="VantyxTrade"
-            style={{ height: 28, width: "auto", borderRadius: 6 }}
-          />
-          VantyxTrade
-        </div>
-
-        <nav className="app-header-nav">
+        <nav className="sb__links">
           {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              className={({ isActive }) => (isActive ? "active" : "")}
-            >
-              {l.icon}
-              {l.label}
+            <NavLink key={l.to} to={l.to} className={linkClass}>
+              <Svg size={15}>{ICONS[l.icon]}</Svg>
+              <span>{l.label}</span>
             </NavLink>
           ))}
         </nav>
-      </div>
 
-      {menuOpen && (
-        <div className="mobile-menu">
-          {displayName && (
-            <div
-              className="mobile-menu-name"
-              style={{ padding: "8px 16px", fontWeight: 600 }}
-            >
-              {displayName}
-            </div>
-          )}
-          {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              onClick={closeMenu}
-              className={({ isActive }) => (isActive ? "active" : "")}
-            >
-              {l.icon}
-              {l.label}
-            </NavLink>
-          ))}
-          <button
-            className="btn btn-ghost mobile-signout"
-            onClick={() => {
-              closeMenu();
-              handleSignOut();
-            }}
+        <form className="sb__search" onSubmit={onSearch} role="search">
+          <Svg size={16}>{ICONS.search}</Svg>
+          <input
+            type="text"
+            placeholder="Search markets..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search markets"
+          />
+        </form>
+
+        <div className="sb__right">
+          <Link to="/deposit" className="sb__balance" title="Available balance">
+            <Svg size={16}>{ICONS.wallet}</Svg>
+            <span>{balance === null ? "…" : `$${balance.toFixed(2)}`}</span>
+          </Link>
+
+          <Link
+            to="/verify"
+            className="sb__icon sb__icon--blue sb__hide-mobile"
+            aria-label="Verify identity"
           >
-            Sign out
+            <Svg size={18}>{ICONS.shield}</Svg>
+          </Link>
+
+          <Link
+            to="/notifications"
+            className="sb__icon"
+            aria-label="Notifications"
+          >
+            <Svg size={18}>{ICONS.bell}</Svg>
+          </Link>
+
+          <Link
+            to="/profile"
+            className={`sb__icon ${displayName ? "sb__icon--user" : ""}`}
+            aria-label="Profile"
+            title={displayName || "Profile"}
+          >
+            <Svg size={18}>{ICONS.user}</Svg>
+            {displayName && (
+              <span className="sb__name sb__hide-mobile">{displayName}</span>
+            )}
+          </Link>
+
+          <button
+            className="sb__icon sb__icon--red sb__hide-mobile"
+            onClick={handleSignOut}
+            aria-label="Sign out"
+            type="button"
+          >
+            <Svg size={18}>{ICONS.logout}</Svg>
+          </button>
+
+          <button
+            className="sb__icon sb__burger"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+            type="button"
+          >
+            <Svg size={22}>{ICONS.menu}</Svg>
           </button>
         </div>
-      )}
-    </header>
+      </header>
+
+      <div
+        className={`sb-overlay ${menuOpen ? "is-open" : ""}`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+      <aside
+        className={`sb-drawer ${menuOpen ? "is-open" : ""}`}
+        aria-hidden={!menuOpen}
+      >
+        <div className="sb-drawer__head">
+          <h2>Menu</h2>
+          <button
+            className="sb-drawer__close"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close menu"
+            type="button"
+          >
+            <Svg size={20}>{ICONS.close}</Svg>
+          </button>
+        </div>
+
+        {displayName && <div className="sb-drawer__name">{displayName}</div>}
+
+        <nav className="sb-drawer__nav">
+          {links.map((l) => (
+            <NavLink key={l.to} to={l.to} className={drawerLinkClass}>
+              <Svg size={18}>{ICONS[l.icon]}</Svg>
+              <span>{l.label}</span>
+            </NavLink>
+          ))}
+          <NavLink to="/notifications" className={drawerLinkClass}>
+            <Svg size={18}>{ICONS.bell}</Svg>
+            <span>Notifications</span>
+          </NavLink>
+          <NavLink to="/profile" className={drawerLinkClass}>
+            <Svg size={18}>{ICONS.user}</Svg>
+            <span>Profile</span>
+          </NavLink>
+          <NavLink
+            to="/verify"
+            className="sb-drawer__link sb-drawer__link--accent"
+          >
+            <Svg size={18}>{ICONS.shield}</Svg>
+            <span>Verify Identity</span>
+          </NavLink>
+        </nav>
+
+        <div className="sb-drawer__divider" />
+
+        <button
+          className="sb-drawer__link sb-drawer__link--red"
+          onClick={() => {
+            setMenuOpen(false);
+            handleSignOut();
+          }}
+          type="button"
+        >
+          <Svg size={18}>{ICONS.logout}</Svg>
+          <span>Sign Out</span>
+        </button>
+
+        <form className="sb-drawer__search" onSubmit={onSearch} role="search">
+          <Svg size={18}>{ICONS.search}</Svg>
+          <input
+            type="text"
+            placeholder="Search markets..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search markets"
+          />
+        </form>
+      </aside>
+    </>
   );
 }
