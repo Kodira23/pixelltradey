@@ -1,4 +1,4 @@
-// Landing.jsx — VantyxTrade
+// Landing.jsx (VantyxTrade)
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import heroTradeImage from "../tradex.png.webp";
@@ -27,7 +27,7 @@ const PERKS = [
   {
     icon: <><path d="M3 3v18h18" /><path d="M7 15l4-5 3 3 5-6" /></>,
     title: "Rules you can read",
-    body: "Every trigger — scheduled, dip-based, or RSI-based — is written out in plain English in your dashboard. No black-box logic.",
+    body: "Every trigger (scheduled, dip-based, or RSI-based) is written out in plain English in your dashboard. No black-box logic.",
   },
   {
     icon: <path d="M2 12h4l3-8 6 16 3-8h4" />,
@@ -179,7 +179,7 @@ export default function Landing() {
         .vtx-split h2 { font-size: clamp(32px, 4.2vw, 52px); line-height: 1.1; letter-spacing: -0.03em; font-weight: 700; max-width: 14em; }
         .vtx-split p { margin: 20px 0 0; color: var(--muted); font-size: 18px; line-height: 1.6; max-width: 30em; }
         .vtx-split-art { display: flex; justify-content: center; }
-        .vtx-split-img { display: block; width: 100%; height: auto; box-sizing: border-box; border: 1px solid var(--accent-line); border-radius: 18px; background: #000; box-shadow: 0 30px 90px rgba(91,110,245,0.22); }
+        .vtx-split-img { display: block; width: min(100%, 340px); aspect-ratio: 9 / 18.5; height: auto; object-fit: cover; box-sizing: border-box; border: 10px solid #111; border-radius: 46px; background: #000; box-shadow: 0 0 0 2px #2c2c2c, 0 0 0 5px #0a0a0a, 0 30px 90px rgba(91,110,245,0.22); }
 
         /* prices */
         .vtx-prices { max-width: 1500px; margin: 0 auto; padding: 30px 52px 110px; }
@@ -257,7 +257,7 @@ export default function Landing() {
           .vtx-snapshot-quote b { font-size: 14px; }
           .vtx-perk { padding: 20px; }
           .vtx-perk h3 { margin-top: 20px; }
-          .vtx-split-img { border-radius: 14px; }
+          .vtx-split-img { width: min(100%, 270px); border-width: 8px; border-radius: 36px; }
           .vtx-prices-table { min-width: 620px; }
           .vtx-prices-table th { padding: 12px 10px; font-size: 13px; }
           .vtx-prices-table td { padding: 14px 10px; font-size: 14px; }
@@ -293,8 +293,8 @@ export default function Landing() {
             <h1>Accumulate Your Wealth, Become A Smart Trader.</h1>
             <p>
               VantyxTrade runs disciplined, rule-based buying strategies
-              directly on your own Binance account. We never hold your money —
-              you connect a trade-only API key, set your schedule, and the bot
+              directly on your own Binance account. We never hold your money.
+              You connect a trade-only API key, set your schedule, and the bot
               does the rest.
             </p>
             <div className="vtx-hero-cta">
@@ -312,7 +312,7 @@ export default function Landing() {
             <p>
               Follow the market as it moves and act with tools built for
               disciplined DCA. One workspace brings your schedules, dip
-              triggers, and RSI rules together — and every order runs on
+              triggers, and RSI rules together, and every order runs on
               your own Binance account.
             </p>
 
@@ -395,8 +395,8 @@ export default function Landing() {
             <span className="vtx-kicker">Transparency</span>
             <h2>Every Order Is Logged, Every Trigger Is Explained</h2>
             <p>
-              Your dashboard shows exactly why each buy happened — scheduled
-              interval, dip trigger, or RSI trigger — pulled straight from
+              Your dashboard shows exactly why each buy happened (scheduled
+              interval, dip trigger, or RSI trigger), pulled straight from
               your real Binance order history.
             </p>
           </div>
