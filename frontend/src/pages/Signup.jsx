@@ -1,19 +1,261 @@
 // Signup.jsx
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import logo from "../vanlogo.png";
 
-const COUNTRIES = [
-  { code: "US", dial: "+1" },
-  { code: "CA", dial: "+1" },
-  { code: "GB", dial: "+44" },
-  { code: "KE", dial: "+254" },
-  { code: "NG", dial: "+234" },
-  { code: "ZA", dial: "+27" },
-  { code: "IN", dial: "+91" },
-  { code: "AE", dial: "+971" },
-];
+// Flag images come from flagcdn.com so they also render on Windows (which has no flag emoji)
+const flag = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
+
+const COUNTRIES = `AF|Afghanistan|93
+AX|Åland Islands|358
+AL|Albania|355
+DZ|Algeria|213
+AS|American Samoa|1684
+AD|Andorra|376
+AO|Angola|244
+AI|Anguilla|1264
+AG|Antigua and Barbuda|1268
+AR|Argentina|54
+AM|Armenia|374
+AW|Aruba|297
+AU|Australia|61
+AT|Austria|43
+AZ|Azerbaijan|994
+BS|Bahamas|1242
+BH|Bahrain|973
+BD|Bangladesh|880
+BB|Barbados|1246
+BY|Belarus|375
+BE|Belgium|32
+BZ|Belize|501
+BJ|Benin|229
+BM|Bermuda|1441
+BT|Bhutan|975
+BO|Bolivia|591
+BQ|Caribbean Netherlands|599
+BA|Bosnia and Herzegovina|387
+BW|Botswana|267
+BR|Brazil|55
+IO|British Indian Ocean Territory|246
+VG|British Virgin Islands|1284
+BN|Brunei|673
+BG|Bulgaria|359
+BF|Burkina Faso|226
+BI|Burundi|257
+KH|Cambodia|855
+CM|Cameroon|237
+CA|Canada|1
+CV|Cape Verde|238
+KY|Cayman Islands|1345
+CF|Central African Republic|236
+TD|Chad|235
+CL|Chile|56
+CN|China|86
+CX|Christmas Island|61
+CC|Cocos (Keeling) Islands|61
+CO|Colombia|57
+KM|Comoros|269
+CG|Congo|242
+CD|DR Congo|243
+CK|Cook Islands|682
+CR|Costa Rica|506
+CI|Côte d'Ivoire|225
+HR|Croatia|385
+CU|Cuba|53
+CW|Curaçao|599
+CY|Cyprus|357
+CZ|Czechia|420
+DK|Denmark|45
+DJ|Djibouti|253
+DM|Dominica|1767
+DO|Dominican Republic|1809
+EC|Ecuador|593
+EG|Egypt|20
+SV|El Salvador|503
+GQ|Equatorial Guinea|240
+ER|Eritrea|291
+EE|Estonia|372
+SZ|Eswatini|268
+ET|Ethiopia|251
+FK|Falkland Islands|500
+FO|Faroe Islands|298
+FJ|Fiji|679
+FI|Finland|358
+FR|France|33
+GF|French Guiana|594
+PF|French Polynesia|689
+GA|Gabon|241
+GM|Gambia|220
+GE|Georgia|995
+DE|Germany|49
+GH|Ghana|233
+GI|Gibraltar|350
+GR|Greece|30
+GL|Greenland|299
+GD|Grenada|1473
+GP|Guadeloupe|590
+GU|Guam|1671
+GT|Guatemala|502
+GG|Guernsey|44
+GN|Guinea|224
+GW|Guinea-Bissau|245
+GY|Guyana|592
+HT|Haiti|509
+HN|Honduras|504
+HK|Hong Kong|852
+HU|Hungary|36
+IS|Iceland|354
+IN|India|91
+ID|Indonesia|62
+IR|Iran|98
+IQ|Iraq|964
+IE|Ireland|353
+IM|Isle of Man|44
+IL|Israel|972
+IT|Italy|39
+JM|Jamaica|1876
+JP|Japan|81
+JE|Jersey|44
+JO|Jordan|962
+KZ|Kazakhstan|7
+KE|Kenya|254
+KI|Kiribati|686
+XK|Kosovo|383
+KW|Kuwait|965
+KG|Kyrgyzstan|996
+LA|Laos|856
+LV|Latvia|371
+LB|Lebanon|961
+LS|Lesotho|266
+LR|Liberia|231
+LY|Libya|218
+LI|Liechtenstein|423
+LT|Lithuania|370
+LU|Luxembourg|352
+MO|Macao|853
+MG|Madagascar|261
+MW|Malawi|265
+MY|Malaysia|60
+MV|Maldives|960
+ML|Mali|223
+MT|Malta|356
+MH|Marshall Islands|692
+MQ|Martinique|596
+MR|Mauritania|222
+MU|Mauritius|230
+YT|Mayotte|262
+MX|Mexico|52
+FM|Micronesia|691
+MD|Moldova|373
+MC|Monaco|377
+MN|Mongolia|976
+ME|Montenegro|382
+MS|Montserrat|1664
+MA|Morocco|212
+MZ|Mozambique|258
+MM|Myanmar|95
+NA|Namibia|264
+NR|Nauru|674
+NP|Nepal|977
+NL|Netherlands|31
+NC|New Caledonia|687
+NZ|New Zealand|64
+NI|Nicaragua|505
+NE|Niger|227
+NG|Nigeria|234
+NU|Niue|683
+NF|Norfolk Island|672
+KP|North Korea|850
+MK|North Macedonia|389
+MP|Northern Mariana Islands|1670
+NO|Norway|47
+OM|Oman|968
+PK|Pakistan|92
+PW|Palau|680
+PS|Palestine|970
+PA|Panama|507
+PG|Papua New Guinea|675
+PY|Paraguay|595
+PE|Peru|51
+PH|Philippines|63
+PL|Poland|48
+PT|Portugal|351
+PR|Puerto Rico|1787
+QA|Qatar|974
+RE|Réunion|262
+RO|Romania|40
+RU|Russia|7
+RW|Rwanda|250
+BL|Saint Barthélemy|590
+SH|Saint Helena|290
+KN|Saint Kitts and Nevis|1869
+LC|Saint Lucia|1758
+MF|Saint Martin|590
+PM|Saint Pierre and Miquelon|508
+VC|Saint Vincent and the Grenadines|1784
+WS|Samoa|685
+SM|San Marino|378
+ST|São Tomé and Príncipe|239
+SA|Saudi Arabia|966
+SN|Senegal|221
+RS|Serbia|381
+SC|Seychelles|248
+SL|Sierra Leone|232
+SG|Singapore|65
+SX|Sint Maarten|1721
+SK|Slovakia|421
+SI|Slovenia|386
+SB|Solomon Islands|677
+SO|Somalia|252
+ZA|South Africa|27
+KR|South Korea|82
+SS|South Sudan|211
+ES|Spain|34
+LK|Sri Lanka|94
+SD|Sudan|249
+SR|Suriname|597
+SJ|Svalbard and Jan Mayen|47
+SE|Sweden|46
+CH|Switzerland|41
+SY|Syria|963
+TW|Taiwan|886
+TJ|Tajikistan|992
+TZ|Tanzania|255
+TH|Thailand|66
+TL|Timor-Leste|670
+TG|Togo|228
+TK|Tokelau|690
+TO|Tonga|676
+TT|Trinidad and Tobago|1868
+TN|Tunisia|216
+TR|Türkiye|90
+TM|Turkmenistan|993
+TC|Turks and Caicos Islands|1649
+TV|Tuvalu|688
+UG|Uganda|256
+UA|Ukraine|380
+AE|United Arab Emirates|971
+GB|United Kingdom|44
+US|United States|1
+UY|Uruguay|598
+VI|US Virgin Islands|1340
+UZ|Uzbekistan|998
+VU|Vanuatu|678
+VA|Vatican City|379
+VE|Venezuela|58
+VN|Vietnam|84
+WF|Wallis and Futuna|681
+EH|Western Sahara|212
+YE|Yemen|967
+ZM|Zambia|260
+ZW|Zimbabwe|263`
+  .split("\n")
+  .map((l) => {
+    const [code, name, d] = l.split("|");
+    return { code, name, dial: "+" + d };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name));
 
 export default function Signup() {
   const [country, setCountry] = useState("US");
@@ -27,7 +269,30 @@ export default function Signup() {
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const dial = COUNTRIES.find((c) => c.code === country)?.dial ?? "+1";
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const phoneRef = useRef(null);
+  const selected = COUNTRIES.find((c) => c.code === country) ?? COUNTRIES[0];
+  const dial = selected.dial;
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (!phoneRef.current?.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  const q = query.trim().toLowerCase().replace(/^\+/, "");
+  const list = q
+    ? COUNTRIES.filter(
+        (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase() === q || c.dial.slice(1).startsWith(q)
+      )
+    : COUNTRIES;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -137,7 +402,7 @@ export default function Signup() {
         .auth__head p { margin: 0; font-size: 14px; line-height: 20px; color: var(--a-sub); }
 
         /* Labels + inputs */
-        .auth__field { display: grid; gap: 8px; }
+        .auth__field { position: relative; display: grid; gap: 8px; }
         .auth__card label {
           display: grid;
           gap: 8px;
@@ -166,11 +431,18 @@ export default function Signup() {
 
         /* Phone: country select + dial code + number */
         .auth__label { font-size: 14px; font-weight: 600; line-height: 20px; color: var(--a-text); }
-        .auth__phone { display: grid; grid-template-columns: 58px 1fr; gap: 8px; }
-        .auth__country { position: relative; }
-        .auth__country select { appearance: none; -webkit-appearance: none; padding: 0 22px 0 12px; font-weight: 700; cursor: pointer; }
-        .auth__country select option { background: var(--a-input); color: var(--a-text); }
-        .auth__country svg { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 10px; height: 10px; color: var(--a-sub); pointer-events: none; }
+        .auth__phone { display: grid; grid-template-columns: 76px 1fr; gap: 8px; }
+        .auth__country-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 40px; padding: 0 8px; background: var(--a-input); border: 1px solid var(--a-input-border); border-radius: 6px; color: var(--a-sub); cursor: pointer; }
+        .auth__country-btn:hover, .auth__country-btn[aria-expanded="true"] { border-color: var(--a-accent); }
+        .auth__flag { display: block; flex: none; width: 20px; height: 15px; object-fit: cover; border-radius: 2px; }
+        .auth__panel { position: absolute; left: 0; right: 0; top: 100%; margin-top: 6px; z-index: 5; padding: 8px; background: var(--a-card); border: 1px solid var(--a-card-border); border-radius: 10px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); }
+        .auth__panel input { margin-bottom: 6px; }
+        .auth__list { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; }
+        .auth__opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; background: none; border: 0; border-radius: 6px; color: var(--a-text); font-family: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+        .auth__opt:hover, .auth__opt.is-sel { background: var(--a-input); }
+        .auth__opt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .auth__opt-dial { color: var(--a-muted); font-size: 13px; }
+        .auth__empty { padding: 10px 8px; color: var(--a-muted); font-size: 13px; }
         .auth__dial { display: flex; align-items: center; height: 40px; box-sizing: border-box; padding-left: 14px; background: var(--a-input); border: 1px solid var(--a-input-border); border-radius: 6px; }
         .auth__dial:focus-within { border-color: var(--a-accent); }
         .auth__dial span { font-size: 14px; color: var(--a-sub); padding-right: 12px; margin-right: 12px; border-right: 1px solid var(--a-input-border); line-height: 16px; }
@@ -272,19 +544,22 @@ export default function Signup() {
           />
         </label>
 
-        <div className="auth__field">
+        <div className="auth__field" ref={phoneRef}>
           <span className="auth__label">Phone Number</span>
           <div className="auth__phone">
-            <div className="auth__country">
-              <select value={country} onChange={(e) => setCountry(e.target.value)} aria-label="Country">
-                {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.code}</option>
-                ))}
-              </select>
+            <button
+              type="button"
+              className="auth__country-btn"
+              onClick={() => setOpen((o) => !o)}
+              aria-haspopup="listbox"
+              aria-expanded={open}
+              aria-label={`Country: ${selected.name}`}
+            >
+              <img className="auth__flag" src={flag(selected.code)} alt="" />
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M6 9l6 6 6-6" />
               </svg>
-            </div>
+            </button>
             <div className="auth__dial">
               <span>{dial}</span>
               <input
@@ -298,6 +573,36 @@ export default function Signup() {
               />
             </div>
           </div>
+          {open && (
+            <div className="auth__panel">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search country or code"
+                aria-label="Search countries"
+                autoFocus
+              />
+              <ul className="auth__list" role="listbox">
+                {list.map((c) => (
+                  <li key={c.code}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={c.code === country}
+                      className={`auth__opt${c.code === country ? " is-sel" : ""}`}
+                      onClick={() => { setCountry(c.code); setOpen(false); setQuery(""); }}
+                    >
+                      <img className="auth__flag" src={flag(c.code)} alt="" loading="lazy" />
+                      <span className="auth__opt-name">{c.name}</span>
+                      <span className="auth__opt-dial">{c.dial}</span>
+                    </button>
+                  </li>
+                ))}
+                {list.length === 0 && <li className="auth__empty">No matching country</li>}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="auth__field">
