@@ -151,11 +151,12 @@ const css = `
 .sb,
 .sb-drawer,
 .sb-overlay {
-  --sb-bg: #050505;
-  --sb-surface: #111312;
-  --sb-border: #232625;
-  --sb-text: #a3a8a5;
-  --sb-text-strong: #f2f4f3;
+  /* navy palette shared with the landing and login pages */
+  --sb-bg: #0a0e1a;
+  --sb-surface: #121a2e;
+  --sb-border: #1f2842;
+  --sb-text: #8a93b3;
+  --sb-text-strong: #f2f4ff;
   --sb-blue: var(--accent, #5b6ef5);
   --sb-blue-bg: color-mix(in srgb, var(--sb-blue) 12%, transparent);
   --sb-blue-border: color-mix(in srgb, var(--sb-blue) 28%, transparent);
@@ -313,7 +314,7 @@ const css = `
 .sb__app:hover,
 .sb__balance:hover {
   color: var(--sb-text-strong);
-  border-color: #353a37;
+  border-color: #2f3a5c;
 }
 
 .sb__balance {
@@ -494,7 +495,7 @@ const css = `
     z-index: 1110;
     width: min(78vw, 300px);
     padding: 18px 18px 24px;
-    background: #0b0c0b;
+    background: var(--sb-bg);
     border-left: 1px solid var(--sb-border);
     overflow-y: auto;
     transform: translateX(100%);
@@ -633,8 +634,8 @@ const css = `
     gap: 10px;
     height: 48px;
     padding: 0 14px;
-    background: #000;
-    border: 1px solid #3a3d3b;
+    background: #050912;
+    border: 1px solid #2a3350;
     border-radius: 10px;
     color: var(--sb-text-strong);
     font-family: inherit;
