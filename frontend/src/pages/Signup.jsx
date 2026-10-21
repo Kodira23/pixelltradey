@@ -4,7 +4,23 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import logo from "../vanlogo.png";
 
+const COUNTRIES = [
+  { code: "US", dial: "+1" },
+  { code: "CA", dial: "+1" },
+  { code: "GB", dial: "+44" },
+  { code: "KE", dial: "+254" },
+  { code: "NG", dial: "+234" },
+  { code: "ZA", dial: "+27" },
+  { code: "IN", dial: "+91" },
+  { code: "AE", dial: "+971" },
+];
+
 export default function Signup() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [country, setCountry] = useState("US");
+  const [phone, setPhone] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,17 +29,24 @@ export default function Signup() {
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const dial = COUNTRIES.find((c) => c.code === country)?.dial ?? "+1";
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setInfo("");
+    if (password !== confirm) return setError("Passwords do not match.");
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { username },
+        data: {
+          username,
+          first_name: firstName,
+          last_name: lastName,
+          phone: `${dial}${phone.replace(/\D/g, "")}`,
+        },
       },
     });
     setLoading(false);
@@ -127,7 +150,8 @@ export default function Signup() {
           line-height: 20px;
           color: var(--a-text);
         }
-        .auth__card input {
+        .auth__card input,
+        .auth__card select {
           width: 100%;
           height: 40px;
           box-sizing: border-box;
@@ -141,7 +165,23 @@ export default function Signup() {
           font-family: inherit;
         }
         .auth__card input::placeholder { color: var(--a-muted); }
-        .auth__card input:focus { border-color: var(--a-accent); outline: none; }
+        .auth__card input:focus,
+        .auth__card select:focus { border-color: var(--a-accent); outline: none; }
+
+        .auth__row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* Phone: country select + dial code + number */
+        .auth__label { font-size: 14px; font-weight: 600; line-height: 20px; color: var(--a-text); }
+        .auth__phone { display: grid; grid-template-columns: 58px 1fr; gap: 8px; }
+        .auth__country { position: relative; }
+        .auth__country select { appearance: none; -webkit-appearance: none; padding: 0 22px 0 12px; font-weight: 700; cursor: pointer; }
+        .auth__country select option { background: var(--a-input); color: var(--a-text); }
+        .auth__country svg { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 10px; height: 10px; color: var(--a-sub); pointer-events: none; }
+        .auth__dial { display: flex; align-items: center; height: 40px; box-sizing: border-box; padding-left: 14px; background: var(--a-input); border: 1px solid var(--a-input-border); border-radius: 6px; }
+        .auth__dial:focus-within { border-color: var(--a-accent); }
+        .auth__dial span { font-size: 14px; color: var(--a-sub); padding-right: 12px; margin-right: 12px; border-right: 1px solid var(--a-input-border); line-height: 16px; }
+        .auth__dial input { border: 0; background: transparent; height: 100%; padding: 0; border-radius: 0; }
+        .auth__dial input:focus { border: 0; }
 
         /* Password field with show/hide toggle */
         .auth__pw { position: relative; }
@@ -194,6 +234,9 @@ export default function Signup() {
           .auth { padding: 52px 12px 16px; }
           .auth__logo img { height: 80px; }
         }
+        @media (max-width: 380px) {
+          .auth__row { grid-template-columns: 1fr; }
+        }
       `}</style>
 
     <div className="auth">
@@ -212,6 +255,31 @@ export default function Signup() {
         <div className="auth__head">
           <h1>Create an account</h1>
           <p>Start accumulating with VantyxTrade</p>
+        </div>
+
+        <div className="auth__row">
+          <label>
+            First Name
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="John"
+              autoComplete="given-name"
+              required
+            />
+          </label>
+          <label>
+            Last Name
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Doe"
+              autoComplete="family-name"
+              required
+            />
+          </label>
         </div>
 
         <label>
@@ -239,6 +307,34 @@ export default function Signup() {
         </label>
 
         <div className="auth__field">
+          <span className="auth__label">Phone Number</span>
+          <div className="auth__phone">
+            <div className="auth__country">
+              <select value={country} onChange={(e) => setCountry(e.target.value)} aria-label="Country">
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.code}</option>
+                ))}
+              </select>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
+            <div className="auth__dial">
+              <span>{dial}</span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="(201) 555-0123"
+                autoComplete="tel-national"
+                aria-label="Phone number"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="auth__field">
           <label htmlFor="password">Password</label>
           <div className="auth__pw">
             <input
@@ -249,6 +345,7 @@ export default function Signup() {
               placeholder="Create a password"
               autoComplete="new-password"
               required
+              minLength={6}
             />
             <button
               type="button"
@@ -272,6 +369,19 @@ export default function Signup() {
             </button>
           </div>
         </div>
+
+        <label>
+          Confirm Password
+          <input
+            type={showPassword ? "text" : "password"}
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="Confirm your password"
+            autoComplete="new-password"
+            required
+            minLength={6}
+          />
+        </label>
 
         {error && <div className="auth__msg auth__msg--err" role="alert">{error}</div>}
         {info && <div className="auth__msg auth__msg--ok">{info}</div>}
