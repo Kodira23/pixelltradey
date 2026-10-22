@@ -256,6 +256,7 @@ body:has(.vdash--bleed) { overflow-x: hidden; }
   .vdash .crypto-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
+  .vdash { --top-gap: 28px; }
   .vdash__hero { padding: 20px 16px; }
   .vdash__hero h1 { font-size: 26px; }
   .vdash__stats { grid-template-columns: minmax(0, 1fr); }
