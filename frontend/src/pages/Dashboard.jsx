@@ -128,7 +128,7 @@ const css = `
   --bg: #0a0e1a;
   --panel: #121a2e;
   --panel-alt: #171f38;
-  --border: #262f4a;
+  --border: #1f2842;
   --accent: #5b6ef5;
   --accent-soft: rgba(91, 110, 245, 0.14);
   --gain: #35d0ba;
@@ -157,6 +157,7 @@ const css = `
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
   margin-top: calc(-1 * var(--top-gap));
+  background: var(--bg);
 }
 body:has(.vdash--bleed) { overflow-x: hidden; }
 
