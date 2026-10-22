@@ -1,7 +1,7 @@
 // src/pages/Dashboard.jsx
 
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useTicker, CRYPTO_DATA } from "../tickerData";
 import { supabase } from "../supabaseClient";
 
@@ -19,19 +19,6 @@ const COIN_META = {
   AVAX: { color: "#e84142" },
   USDT: { color: "#26a17b" },
 };
-
-// Mock wallet addresses, replace with real generation from backend
-const WALLETS = {
-  BTC: "121HaiJWC24Na5kSgcUrYFhGTKqAvSvx2U",
-  USDT_TRC20: "TPJjgnPuhg3GzQdGhJUwFYsAKg6W8pkTdk",
-};
-
-// Withdrawal method options (icon + display label)
-const WITHDRAW_METHODS = [
-  { key: "Bitcoin", base: "BTC" },
-  { key: "USDT", base: "USDT" },
-  { key: "Ethereum", base: "ETH" },
-];
 
 const pct = (n) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 const usd = (n) => `$${n.toLocaleString()}`;
@@ -148,6 +135,9 @@ const css = `
   --loss: #ff6b6b;
   --text: #e7ecfb;
   --muted: #8a93b3;
+  /* Pulls the hero up to sit flush under the header.
+     Match this to the top padding of your layout's content wrapper. */
+  --top-gap: 60px;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   min-width: 0;
@@ -161,7 +151,13 @@ const css = `
 .vdash .error-text { color: var(--loss); font-size: 13px; margin: 10px 0; }
 
 /* full-bleed: break out of the layout's side padding and max-width */
-.vdash--bleed { width: 100vw; max-width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
+.vdash--bleed {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  margin-top: calc(-1 * var(--top-gap));
+}
 body:has(.vdash--bleed) { overflow-x: hidden; }
 
 /* ---------- buttons ---------- */
@@ -176,11 +172,8 @@ body:has(.vdash--bleed) { overflow-x: hidden; }
 /* ---------- hero band ---------- */
 .vdash__hero { padding: 32px 28px 28px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, var(--bg)) 0%, var(--bg) 100%); }
 .vdash__inner { max-width: 1500px; margin: 0 auto; }
-.vdash__hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 .vdash__hero h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
 .vdash__sub { margin: 0; color: var(--muted); font-size: 16px; }
-.vdash__hero-btns { display: flex; gap: 12px; }
-.vdash__hero-btns .btn { height: 40px; padding: 0 22px; }
 
 .vdash__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
 .vdash__stat { min-width: 0; padding: 18px 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; }
@@ -251,57 +244,6 @@ body:has(.vdash--bleed) { overflow-x: hidden; }
 .vdash__pct { font-size: 17px; font-weight: 600; white-space: nowrap; }
 .vdash__empty { margin: 0; padding: 14px 4px; color: var(--muted); font-size: 14px; }
 
-/* ---------- deposit and withdraw views ---------- */
-.vdash .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-.vdash .page-header h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; }
-.vdash .page-header p { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
-.vdash .deposit-container { max-width: 760px; margin: 0 auto; padding: 24px; }
-.vdash .panel.deposit-panel, .vdash .panel.withdraw-panel, .vdash .pending-withdrawals-panel { background: var(--bg); border: none; }
-
-.vdash .method-selector { display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px; padding-bottom: 16px; }
-.vdash .method-banner { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--accent); color: #fff; font-weight: 700; font-size: 18px; padding: 16px; border-radius: 8px; }
-.vdash .method-banner-icon { font-size: 20px; line-height: 1; }
-.vdash .method-options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.vdash .method-options-3 { grid-template-columns: repeat(3, 1fr); }
-.vdash .method-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #1a2140; border: 1px solid var(--border); border-radius: 8px; padding: 20px 16px; font-family: inherit; font-weight: 600; font-size: 16px; color: var(--text); cursor: pointer; transition: all 0.2s; }
-.vdash .method-card .coin-icon-img, .vdash .method-card .coin-icon { width: 56px; height: 56px; }
-.vdash .method-card.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-.vdash .method-card:hover:not(.active) { border-color: var(--muted); }
-
-.vdash .amount-section { margin-bottom: 24px; }
-.vdash .amount-section label { display: block; font-weight: 600; margin-bottom: 4px; color: var(--muted); }
-.vdash .amount-input { width: 100%; padding: 12px; font-size: 1.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-family: inherit; }
-.vdash .amount-input:focus { outline: none; border-color: var(--accent); }
-.vdash .wallet-input { font-size: 0.95rem; text-align: left; }
-
-.vdash .wallet-section { background: linear-gradient(135deg, var(--accent), #3a4bc4); padding: 24px 32px; border-radius: 20px; text-align: center; margin-bottom: 24px; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.vdash .wallet-label { font-weight: 700; font-size: 20px; color: #fff; margin-bottom: 20px; }
-.vdash .wallet-address { font-size: 1rem; word-break: break-all; overflow-wrap: break-word; background: rgba(0, 0, 0, 0.3); padding: 14px 20px; border-radius: 12px; margin-bottom: 20px; color: #fff; width: 100%; text-align: center; line-height: 1.5; }
-.vdash .copy-btn { margin: 0 0 20px; display: flex; width: 100%; justify-content: center; background: #22c55e; border: none; color: #0a0e1a; font-weight: 700; font-size: 16px; padding: 14px; border-radius: 12px; }
-.vdash .copy-btn:hover { background: #1eaf52; filter: none; }
-.vdash .wallet-hint { font-size: 0.9rem; color: rgba(255, 255, 255, 0.85); line-height: 1.5; max-width: 420px; margin: 0; }
-
-.vdash .withdraw-balance-panel { background: linear-gradient(135deg, var(--accent), #3a4bc4); border-radius: 20px; padding: 22px 32px; text-align: center; margin-bottom: 24px; }
-.vdash .withdraw-balance-value { font-size: 32px; font-weight: 700; color: var(--gain); margin-bottom: 8px; }
-.vdash .withdraw-balance-label { color: #fff; opacity: 0.85; font-size: 14px; }
-.vdash .withdraw-btn { width: 100%; padding: 14px; margin-top: 8px; border-radius: 8px; background: var(--panel-alt); border: 1px solid var(--border); color: var(--muted); font-family: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
-.vdash .withdraw-btn:not(:disabled):hover { border-color: var(--accent); color: var(--text); }
-.vdash .withdraw-btn:disabled { cursor: not-allowed; opacity: 0.7; }
-
-.vdash .pending-withdrawals-title { font-size: 22px; font-weight: 800; text-align: center; margin: 32px 0 16px; }
-.vdash .pending-withdrawals-panel { text-align: center; padding: 28px 24px; }
-.vdash .pending-empty-icon { font-size: 40px; margin-bottom: 12px; }
-.vdash .pending-empty-text { color: var(--muted); margin: 0; }
-.vdash .pending-withdrawals-list { text-align: left; }
-.vdash .pending-withdrawal-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 4px; border-bottom: 1px solid var(--border); gap: 12px; }
-.vdash .pending-withdrawal-item:last-child { border-bottom: none; }
-.vdash .pending-withdrawal-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.vdash .pending-withdrawal-amount { font-size: 14px; color: var(--text); font-weight: 600; margin-bottom: 2px; }
-.vdash .pending-withdrawal-address { font-size: 12px; color: var(--muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vdash .pending-status-pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(245, 197, 66, 0.13); color: #f5c542; flex-shrink: 0; }
-.vdash .pending-status-pill.approved { background: rgba(53, 208, 186, 0.14); color: var(--gain); }
-.vdash .pending-status-pill.rejected { background: rgba(255, 107, 107, 0.14); color: var(--loss); }
-
 /* ---------- responsive ---------- */
 @media (max-width: 1100px) {
   .vdash__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -316,15 +258,9 @@ body:has(.vdash--bleed) { overflow-x: hidden; }
 @media (max-width: 640px) {
   .vdash__hero { padding: 20px 16px; }
   .vdash__hero h1 { font-size: 26px; }
-  .vdash__hero-btns { width: 100%; }
-  .vdash__hero-btns .btn { flex: 1; }
   .vdash__stats { grid-template-columns: minmax(0, 1fr); }
   .vdash__stat-val { font-size: 24px; }
   .vdash__body { padding: 20px 16px 40px; }
-  .vdash .deposit-container { max-width: 100%; padding: 16px; }
-  .vdash .panel.deposit-panel, .vdash .panel.withdraw-panel, .vdash .pending-withdrawals-panel, .vdash .withdraw-balance-panel { border-radius: 0; margin-left: -16px; margin-right: -16px; width: calc(100% + 32px); }
-  .vdash .wallet-section { margin-left: -24px; margin-right: -24px; width: calc(100% + 48px); border-radius: 0; }
-  .vdash .wallet-address { font-size: 0.85rem; padding: 12px 14px; }
 }
 `;
 
@@ -332,41 +268,16 @@ body:has(.vdash--bleed) { overflow-x: hidden; }
 export default function Dashboard() {
   const pairs = useTicker();
   const [lastUpdated] = useState(new Date());
-  const location = useLocation();
 
   // Real balance, pulled from Supabase (profiles.balance), same field the admin panel edits
   const [totalValue, setTotalValue] = useState(0);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [balanceError, setBalanceError] = useState("");
-  const [userId, setUserId] = useState(null);
   const [displayName, setDisplayName] = useState("");
 
   // TODO: portfolio % change still needs real P&L calculation once Binance API is wired in
   const portfolioChange = 0;
   const portfolioUp = true;
-
-  // Deposit state
-  const [showDeposit, setShowDeposit] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState("Bitcoin");
-  const [amount, setAmount] = useState("");
-  const [copied, setCopied] = useState(false);
-
-  // Withdraw state
-  const [showWithdraw, setShowWithdraw] = useState(false);
-  const [selectedWithdrawMethod, setSelectedWithdrawMethod] =
-    useState("Bitcoin");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawAddress, setWithdrawAddress] = useState("");
-  const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
-  const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
-  const [withdrawError, setWithdrawError] = useState("");
-
-  // Reset to the main dashboard whenever the Dashboard link is clicked
-  // in the header, even if we're already on /dashboard
-  useEffect(() => {
-    setShowDeposit(false);
-    setShowWithdraw(false);
-  }, [location.key]);
 
   // ---------- Fetch real balance from Supabase ----------
   useEffect(() => {
@@ -381,7 +292,6 @@ export default function Dashboard() {
         if (userError) throw userError;
         if (!user) throw new Error("No logged-in user found.");
 
-        setUserId(user.id);
         setDisplayName(
           user.user_metadata?.username ||
             user.user_metadata?.name ||
@@ -428,62 +338,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // ---------- Load this user's real withdrawals + keep status in sync ----------
-  useEffect(() => {
-    if (!userId) return;
-
-    async function loadWithdrawals() {
-      const { data, error } = await supabase
-        .from("withdrawals")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Failed to load withdrawals:", error.message);
-        return;
-      }
-      setPendingWithdrawals(data || []);
-    }
-
-    loadWithdrawals();
-
-    // Realtime: reflect admin approve/reject instantly, and pick up
-    // any new request inserted from elsewhere.
-    const channel = supabase
-      .channel(`withdrawals:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "withdrawals",
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setPendingWithdrawals((prev) => {
-              if (prev.some((w) => w.id === payload.new.id)) return prev;
-              return [payload.new, ...prev];
-            });
-          } else if (payload.eventType === "UPDATE") {
-            setPendingWithdrawals((prev) =>
-              prev.map((w) => (w.id === payload.new.id ? payload.new : w)),
-            );
-          } else if (payload.eventType === "DELETE") {
-            setPendingWithdrawals((prev) =>
-              prev.filter((w) => w.id !== payload.old.id),
-            );
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userId]);
-
   // ---------- Market data derived from the live ticker ----------
   const watchlist = WATCHLIST_BASES.map((base) => {
     const p = pairs.find((pair) => pair.symbol === `${base}/USDT`);
@@ -513,280 +367,6 @@ export default function Dashboard() {
     second: "2-digit",
   });
 
-  // ---------- Deposit logic ----------
-  const getWalletAddress = () => {
-    return selectedMethod === "Bitcoin" ? WALLETS.BTC : WALLETS.USDT_TRC20;
-  };
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(getWalletAddress());
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
-
-  const handleMethodChange = (method) => {
-    setSelectedMethod(method);
-    setCopied(false);
-  };
-
-  // ---------- Withdraw logic ----------
-  const handleWithdrawMethodChange = (method) => {
-    setSelectedWithdrawMethod(method);
-  };
-
-  const canSubmitWithdrawal =
-    withdrawAmount.trim() !== "" &&
-    Number(withdrawAmount) > 0 &&
-    Number(withdrawAmount) <= totalValue &&
-    withdrawAddress.trim() !== "" &&
-    !withdrawSubmitting;
-
-  const handleWithdrawSubmit = async () => {
-    if (!canSubmitWithdrawal || !userId) return;
-
-    setWithdrawSubmitting(true);
-    setWithdrawError("");
-
-    const { data, error } = await supabase
-      .from("withdrawals")
-      .insert({
-        user_id: userId,
-        method: selectedWithdrawMethod,
-        amount: Number(withdrawAmount),
-        address: withdrawAddress.trim(),
-        status: "pending",
-      })
-      .select()
-      .single();
-
-    setWithdrawSubmitting(false);
-
-    if (error) {
-      console.error("Failed to submit withdrawal:", error.message);
-      setWithdrawError(error.message);
-      return;
-    }
-
-    // Realtime subscription above will also deliver this INSERT, the
-    // de-dupe check there prevents it from being added twice.
-    setPendingWithdrawals((prev) => [data, ...prev]);
-    setWithdrawAmount("");
-    setWithdrawAddress("");
-  };
-
-  // ---------- Deposit View Renderer ----------
-  const renderDeposit = () => (
-    <div className="deposit-container">
-      <div className="page-header">
-        <div>
-          <h1>Fund Your Account</h1>
-          <p>Choose your preferred deposit method below.</p>
-        </div>
-      </div>
-
-      <div className="panel deposit-panel">
-        <div className="method-selector">
-          <div className="method-banner">
-            <span className="method-banner-icon">🪙</span>
-            Crypto
-          </div>
-          <div className="method-options">
-            <button
-              className={`method-card ${selectedMethod === "Bitcoin" ? "active" : ""}`}
-              onClick={() => handleMethodChange("Bitcoin")}
-            >
-              <CoinIcon base="BTC" />
-              <span>Bitcoin</span>
-            </button>
-            <button
-              className={`method-card ${selectedMethod === "USDT" ? "active" : ""}`}
-              onClick={() => handleMethodChange("USDT")}
-            >
-              <CoinIcon base="USDT" />
-              <span>USDT</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="amount-section">
-          <label>Amount (USD)</label>
-          <input
-            type="number"
-            className="amount-input mono"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0"
-            min="0"
-            step="0.01"
-          />
-        </div>
-
-        <div className="wallet-section">
-          <div className="wallet-label">
-            {selectedMethod === "Bitcoin"
-              ? "Bitcoin Wallet Address"
-              : "USDT (TRC20) Wallet Address"}
-          </div>
-          <div className="wallet-address mono">{getWalletAddress()}</div>
-          <button onClick={copyToClipboard} className="btn copy-btn">
-            {copied ? "✅ Copied!" : "Copy Address"}
-          </button>
-          <p className="wallet-hint">
-            Send the exact amount to this address and your account will be
-            credited automatically.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ---------- Withdraw View Renderer ----------
-  const renderWithdraw = () => (
-    <div className="deposit-container">
-      <div className="page-header">
-        <div>
-          <h1>Withdraw Funds</h1>
-          <p>Choose your preferred withdrawal method below</p>
-        </div>
-      </div>
-
-      <div className="withdraw-balance-panel">
-        <div className="withdraw-balance-value mono">
-          ${totalValue.toFixed(2)}
-        </div>
-        <div className="withdraw-balance-label">Available Balance</div>
-      </div>
-
-      <div className="panel withdraw-panel">
-        <div className="method-selector">
-          <div className="method-banner">
-            <span className="method-banner-icon">🪙</span>
-            Crypto
-          </div>
-          <div className="method-options method-options-3">
-            {WITHDRAW_METHODS.map(({ key, base }) => (
-              <button
-                key={key}
-                className={`method-card ${selectedWithdrawMethod === key ? "active" : ""}`}
-                onClick={() => handleWithdrawMethodChange(key)}
-              >
-                <CoinIcon base={base} />
-                <span>{key}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="amount-section">
-          <label>Amount (USD)</label>
-          <input
-            type="number"
-            className="amount-input mono"
-            value={withdrawAmount}
-            onChange={(e) => setWithdrawAmount(e.target.value)}
-            placeholder="0"
-            min="0"
-            step="0.01"
-          />
-        </div>
-
-        <div className="amount-section">
-          <label>Your Wallet Address</label>
-          <input
-            type="text"
-            className="amount-input mono wallet-input"
-            value={withdrawAddress}
-            onChange={(e) => setWithdrawAddress(e.target.value)}
-            placeholder="Enter your wallet address"
-          />
-        </div>
-
-        <button
-          className="withdraw-btn"
-          onClick={handleWithdrawSubmit}
-          disabled={!canSubmitWithdrawal}
-        >
-          {withdrawSubmitting ? "Submitting…" : "Withdraw"}
-        </button>
-        {withdrawError && (
-          <p className="error-text" style={{ marginTop: 8 }}>
-            {withdrawError}
-          </p>
-        )}
-        {Number(withdrawAmount) > totalValue &&
-          withdrawAmount.trim() !== "" && (
-            <p className="error-text" style={{ marginTop: 8 }}>
-              Amount exceeds your available balance.
-            </p>
-          )}
-      </div>
-
-      <h2 className="pending-withdrawals-title">Pending Withdrawals</h2>
-      <div className="panel pending-withdrawals-panel">
-        {pendingWithdrawals.length === 0 ? (
-          <>
-            <div className="pending-empty-icon">📪</div>
-            <p className="pending-empty-text">No pending withdrawals found.</p>
-          </>
-        ) : (
-          <div className="pending-withdrawals-list">
-            {pendingWithdrawals.map((w) => {
-              const base = WITHDRAW_METHODS.find(
-                (m) => m.key === w.method,
-              )?.base;
-              return (
-                <div className="pending-withdrawal-item" key={w.id}>
-                  <div className="pending-withdrawal-left">
-                    <CoinIcon base={base} />
-                    <div>
-                      <div className="pending-withdrawal-amount mono">
-                        ${Number(w.amount).toFixed(2)} · {w.method}
-                      </div>
-                      <div className="pending-withdrawal-address">
-                        {w.address}
-                      </div>
-                    </div>
-                  </div>
-                  <span className={`pending-status-pill ${w.status}`}>
-                    {w.status === "pending"
-                      ? "Pending"
-                      : w.status === "approved"
-                        ? "Approved"
-                        : "Rejected"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  // ---------- Main render ----------
-  if (showDeposit) {
-    return (
-      <div className="vdash dashboard-wrapper">
-        <style>{css}</style>
-        {renderDeposit()}
-      </div>
-    );
-  }
-
-  if (showWithdraw) {
-    return (
-      <div className="vdash dashboard-wrapper">
-        <style>{css}</style>
-        {renderWithdraw()}
-      </div>
-    );
-  }
-
-  // Normal Dashboard
   return (
     <div className="vdash vdash--bleed">
       <style>{css}</style>
@@ -794,27 +374,11 @@ export default function Dashboard() {
       {/* ---------- 1. Hero + stats ---------- */}
       <section className="vdash__hero">
         <div className="vdash__inner">
-          <div className="vdash__hero-top">
-            <div>
-              <h1>Welcome back, {displayName || "trader"}</h1>
-              <p className="vdash__sub">
-                Here's your portfolio and the latest market overview.
-              </p>
-            </div>
-            <div className="vdash__hero-btns">
-              <button
-                className="btn btn-primary"
-                onClick={() => setShowDeposit(true)}
-              >
-                Deposit
-              </button>
-              <button
-                className="btn btn-outline"
-                onClick={() => setShowWithdraw(true)}
-              >
-                Withdraw
-              </button>
-            </div>
+          <div>
+            <h1>Welcome back, {displayName || "trader"}</h1>
+            <p className="vdash__sub">
+              Here's your portfolio and the latest market overview.
+            </p>
           </div>
 
           <div className="vdash__stats">
