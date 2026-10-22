@@ -4,15 +4,16 @@
 body:has(.spot) { overflow-x: hidden; }
 
 .spot {
-  /* blue theme: pulls from the global tokens, falls back to the dashboard palette */
-  --sp-bg: var(--bg, #0a0e1a);
-  --sp-panel: var(--panel, #121a2e);
-  --sp-alt: var(--panel-alt, #171f38);
-  --sp-border: var(--border, #262f4a);
+  /* palette copied from the header (Sidebar.jsx), hardcoded so it can't drift:
+     page background = header color, inner containers = header surface color */
+  --sp-bg: #0a0e1a;
+  --sp-panel: #121a2e;
+  --sp-alt: #1a2340;
+  --sp-border: #1f2842;
   --sp-accent: var(--accent, #5b6ef5);
-  --sp-soft: var(--accent-soft, rgba(91, 110, 245, 0.14));
-  --sp-text: var(--text, #e7ecfb);
-  --sp-muted: var(--text-muted, #8a93b3);
+  --sp-soft: color-mix(in srgb, var(--sp-accent) 14%, transparent);
+  --sp-text: #f2f4ff;
+  --sp-muted: #8a93b3;
   --g: var(--gain, #35d0ba);
   --r: var(--loss, #ff6b6b);
   --mono: var(--font-mono, 'JetBrains Mono'), ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
