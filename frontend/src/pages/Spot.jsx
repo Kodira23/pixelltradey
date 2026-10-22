@@ -1,10 +1,41 @@
 // src/pages/Spot.jsx
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Star, TrendingUp, TrendingDown, Wallet, List, Clock, Activity, ChevronDown, X } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { useTicker } from '../tickerData'
 import './Spot.css'
+
+// ---------- Inline icons (no icon library needed) ----------
+const icon = (children) =>
+  function Icon({ size = 16, className }) {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+      >
+        {children}
+      </svg>
+    )
+  }
+
+const Search = icon(<><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></>)
+const Star = icon(<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />)
+const TrendingUp = icon(<><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></>)
+const TrendingDown = icon(<><polyline points="22 17 13.5 8.5 8.5 13.5 2 7" /><polyline points="16 17 22 17 22 11" /></>)
+const Wallet = icon(<><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></>)
+const List = icon(<><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="M3 6h.01" /><path d="M3 12h.01" /><path d="M3 18h.01" /></>)
+const Clock = icon(<><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>)
+const Activity = icon(<path d="M22 12h-4l-3 9L9 3l-3 9H2" />)
+const ChevronDown = icon(<path d="m6 9 6 6 6-6" />)
+const X = icon(<><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>)
 
 const TF = { '1H': '1h', '4H': '4h', '1D': '1d', '1W': '1w', '1M': '1M' }
 const N = 60
