@@ -99,10 +99,23 @@ function TetherLogo({ size = 30 }) {
   );
 }
 
+function TronLogo({ size = 30 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" role="img">
+      <circle cx="16" cy="16" r="16" fill="#EF0027" />
+      {/* main arrow body */}
+      <path fill="#fff" d="M8.8 8.8 24 11.2 11.6 23.6z" />
+      {/* detached lower-left sliver */}
+      <path fill="#fff" d="M8.8 8.8 6.4 13.1 10 16.6z" />
+    </svg>
+  );
+}
+
 function CryptoIcon({ symbol, size = 30 }) {
   if (symbol === "BTC") return <BitcoinLogo size={size} />;
   if (symbol === "USDT") return <TetherLogo size={size} />;
-  // Fallback text badge for anything without a real logo (e.g. TRX network)
+  if (symbol === "TRX") return <TronLogo size={size} />;
+  // Fallback text badge for anything without a real logo
   return (
     <span className="dep__coin" style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}>
       {String(symbol).slice(0, 3)}
