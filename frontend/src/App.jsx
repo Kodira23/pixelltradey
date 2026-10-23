@@ -9,6 +9,11 @@ import Dashboard from "./pages/Dashboard";
 import Markets from "./pages/Markets";
 import Spot from "./pages/Spot";
 import Bots from "./pages/Bots";
+import Deposit from "./pages/Deposit";
+import Withdraw from "./pages/Withdraw";
+import Notifications from "./pages/Notifications";
+import Profile from "./pages/Profile";
+import Verify from "./pages/Verify";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -23,6 +28,15 @@ function AppLayout({ children }) {
       <div className="main-content">{children}</div>
       <ChatWidget />
     </div>
+  );
+}
+
+// Wraps a page in the auth guard + app shell
+function Protected({ session, children }) {
+  return (
+    <ProtectedRoute session={session}>
+      <AppLayout>{children}</AppLayout>
+    </ProtectedRoute>
   );
 }
 
@@ -44,56 +58,16 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute session={session}>
-              <AppLayout>
-                <Dashboard />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/markets"
-          element={
-            <ProtectedRoute session={session}>
-              <AppLayout>
-                <Markets />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/spot"
-          element={
-            <ProtectedRoute session={session}>
-              <AppLayout>
-                <Spot />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/bots"
-          element={
-            <ProtectedRoute session={session}>
-              <AppLayout>
-                <Bots />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute session={session}>
-              <AppLayout>
-                <Settings />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/dashboard" element={<Protected session={session}><Dashboard /></Protected>} />
+        <Route path="/markets" element={<Protected session={session}><Markets /></Protected>} />
+        <Route path="/spot" element={<Protected session={session}><Spot /></Protected>} />
+        <Route path="/bots" element={<Protected session={session}><Bots /></Protected>} />
+        <Route path="/deposit" element={<Protected session={session}><Deposit /></Protected>} />
+        <Route path="/withdraw" element={<Protected session={session}><Withdraw /></Protected>} />
+        <Route path="/notifications" element={<Protected session={session}><Notifications /></Protected>} />
+        <Route path="/profile" element={<Protected session={session}><Profile /></Protected>} />
+        <Route path="/verify" element={<Protected session={session}><Verify /></Protected>} />
+        <Route path="/settings" element={<Protected session={session}><Settings /></Protected>} />
         <Route
           path="/admin"
           element={
