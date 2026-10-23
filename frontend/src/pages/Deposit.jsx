@@ -297,7 +297,7 @@ const css = `
 .dep__r2 span { display: inline-flex; align-items: center; gap: 8px; }
 .dep__r2 button { display: inline-grid; color: var(--text); }
 .dep__r2 button:hover { color: var(--strong); }
-.dep__r3 { margin-top: 10px; color: #c3c9e0; font-size: 14px; }
+.dep__r3 { margin-top: 10px; color: #c3c9e0; font-size: 14px; display: flex; justify-content: space-between; }
 
 @media (max-width: 900px) {
   .dep { padding: 16px 14px 32px; }
@@ -644,6 +644,12 @@ export default function Deposit() {
                     );
                   })()}
 
+                  {/* --- Added Air Network Bonus Here --- */}
+                  <div className="dep__time dep__time--status">
+                    <span>Air Network Bonus</span>
+                    <b style={{ color: "var(--green)", fontSize: "18px" }}>+${dep.airNetwork}</b>
+                  </div>
+
                   {depStatus === "completed" && (
                     <p className="dep__done"><Svg size={18}>{I.okCircle}</Svg> Payment received</p>
                   )}
@@ -734,7 +740,12 @@ export default function Deposit() {
                       </span>
                       <span>{fmtDate(d.created)}</span>
                     </div>
-                    <div className="dep__r3">{d.amount} {d.symbol} {d.airNetwork && `(+ $${d.airNetwork} Air Network)`}</div>
+                    <div className="dep__r3">
+                      <span>{d.amount} {d.symbol}</span>
+                      {d.airNetwork && Number(d.airNetwork) > 0 && (
+                        <span style={{ color: "var(--green)" }}>+${d.airNetwork} Air</span>
+                      )}
+                    </div>
                   </article>
                 );
               })}
