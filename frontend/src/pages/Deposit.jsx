@@ -1,5 +1,4 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../lib/supabase";
 
 /* ------------------------------------------------------------------
@@ -212,8 +211,6 @@ const css = `
 .dep__big { color: var(--blue); font-family: var(--mono); font-size: 22px; font-weight: 700; overflow-wrap: anywhere; }
 .dep__box code { font-family: var(--mono); font-size: 13px; word-break: break-all; padding: 14px 0; color: var(--strong); }
 .dep__amber { margin: 0 0 8px; color: var(--amber); font-size: 14px; line-height: 1.4; }
-.dep__qr { display: grid; place-items: center; margin-top: 8px; padding: 20px; border-radius: 12px; background: #fff; }
-.dep__qr svg { display: block; max-width: 100%; height: auto; }
 .dep__imp {
   display: flex; gap: 12px; padding: 14px 16px; border-radius: 12px; color: var(--amber);
   border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent); background: color-mix(in srgb, var(--amber) 8%, transparent);
@@ -665,10 +662,6 @@ export default function Deposit() {
                         <button type="button" onClick={() => copy(dep.address, "addr")} aria-label="Copy address">
                           <Svg size={20}>{copied === "addr" ? I.check : I.copy}</Svg>
                         </button>
-                      </div>
-
-                      <div className="dep__qr">
-                        <QRCodeSVG value={dep.address} size={190} />
                       </div>
                     </>
                   )}
