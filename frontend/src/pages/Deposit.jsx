@@ -391,10 +391,29 @@ export default function Deposit() {
   const [err, setErr] = useState("");
   const [note, setNote] = useState(null);
   const [dep, setDep] = useState(null);
-  const [history, setHistory] = useState([]);
+  
+  // Initialize history from localStorage
+  const [history, setHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem("deposit_history");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [now, setNow] = useState(Date.now());
   const [copied, setCopied] = useState("");
   const [checking, setChecking] = useState(false);
+
+  // Save history to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem("deposit_history", JSON.stringify(history));
+    } catch {
+      // ignore
+    }
+  }, [history]);
 
   useEffect(() => {
     const prev = document.body.style.background;
@@ -455,7 +474,9 @@ export default function Deposit() {
     setBusy(true);
 
     const usd = Number(amount);
-    const coinAmt = (usd / coinInfo.priceUsd).toFixed(coinInfo.dec);
+    const airNetworkBonus = usd / 50;
+    const totalUsd = usd + airNetworkBonus; // Add deposit + bonus
+    const coinAmt = (totalUsd / coinInfo.priceUsd).toFixed(coinInfo.dec); // Total crypto to send
     const expires = new Date(Date.now() + HOLD_MIN * 60000).toISOString();
 
     const rec = {
@@ -464,8 +485,8 @@ export default function Deposit() {
       symbol: coinInfo.s,
       network: net,
       address: n.address,
-      amount: coinAmt,
-      airNetwork: (usd / 50).toFixed(2),
+      amount: coinAmt, // This is now the combined total
+      airNetwork: airNetworkBonus.toFixed(2),
       status: "pending",
       expires,
       created: new Date().toISOString(),
@@ -657,21 +678,16 @@ export default function Deposit() {
                   {depLive && (
                     <>
                       <span className="dep__sm">Send Exactly</span>
-                      <div className="dep__box" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '16px' }}>
+                      <div className="dep__box" style={{ padding: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <b className="dep__big">{dep.amount} {dep.symbol}</b>
                           <button type="button" onClick={() => copy(dep.amount, "amt")} aria-label="Copy amount">
                             <Svg size={20}>{copied === "amt" ? I.check : I.copy}</Svg>
                           </button>
                         </div>
-                        {dep.airNetwork && Number(dep.airNetwork) > 0 && (
-                          <div style={{ fontSize: '14px', color: 'var(--green)', marginTop: '6px', fontWeight: 600 }}>
-                            + ${dep.airNetwork} Air Network Bonus
-                          </div>
-                        )}
                       </div>
                       <p className="dep__amber" style={{ marginTop: '8px' }}>
-                        Copy and send the exact amount to receive your deposit and bonus
+                        Copy and send the exact total amount shown above
                       </p>
 
                       <span className="dep__sm">To This Address</span>
