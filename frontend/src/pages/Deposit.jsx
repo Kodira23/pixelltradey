@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../lib/supabase";
 
 /* ------------------------------------------------------------------
    EDIT THIS: your real USDT (TRC20) receiving address.
