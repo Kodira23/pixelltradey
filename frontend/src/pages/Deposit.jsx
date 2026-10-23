@@ -11,9 +11,6 @@ const MIN = 50;
 const CHIPS = [50, 100, 250, 500];
 const HOLD_MIN = 60;
 
-/* `priceUsd` = how many USD 1 unit of the coin is worth.
-   USDT is pegged 1:1. BTC rate is a placeholder — replace with a live
-   price feed if you want accurate conversions. */
 const COINS = [
   { s: "USDT", n: "Tether", dec: 2, nets: ["TRC20"], priceUsd: 1 },
   { s: "BTC", n: "Bitcoin", dec: 8, nets: ["BTC"], priceUsd: 65000 },
@@ -120,7 +117,6 @@ function CryptoIcon({ symbol, size = 30 }) {
   );
 }
 
-// [label, tone, icon, spin?]
 const BADGE = {
   expired: ["Expired", "red", I.xCircle],
   pending: ["Waiting", "amber", I.loader, true],
@@ -429,8 +425,6 @@ export default function Deposit() {
   };
 
   const amountOk = Number(amount) >= MIN;
-  
-  // Air Network Bonus: $1 for every $50 deposited
   const airNetworkBonus = amountOk ? (Number(amount) / 50).toFixed(2) : "0.00";
 
   const coinInfo = COINS.find((c) => c.s === coin);
@@ -471,7 +465,7 @@ export default function Deposit() {
       network: net,
       address: n.address,
       amount: coinAmt,
-      airNetwork: (usd / 50).toFixed(2), // Store bonus in record
+      airNetwork: (usd / 50).toFixed(2),
       status: "pending",
       expires,
       created: new Date().toISOString(),
@@ -644,7 +638,6 @@ export default function Deposit() {
                     );
                   })()}
 
-                  {/* --- Added Air Network Bonus Here --- */}
                   <div className="dep__time dep__time--status">
                     <span>Air Network Bonus</span>
                     <b style={{ color: "var(--green)", fontSize: "18px" }}>+${dep.airNetwork}</b>
@@ -664,13 +657,22 @@ export default function Deposit() {
                   {depLive && (
                     <>
                       <span className="dep__sm">Send Exactly</span>
-                      <div className="dep__box">
-                        <b className="dep__big">{dep.amount} {dep.symbol}</b>
-                        <button type="button" onClick={() => copy(dep.amount, "amt")} aria-label="Copy amount">
-                          <Svg size={20}>{copied === "amt" ? I.check : I.copy}</Svg>
-                        </button>
+                      <div className="dep__box" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <b className="dep__big">{dep.amount} {dep.symbol}</b>
+                          <button type="button" onClick={() => copy(dep.amount, "amt")} aria-label="Copy amount">
+                            <Svg size={20}>{copied === "amt" ? I.check : I.copy}</Svg>
+                          </button>
+                        </div>
+                        {dep.airNetwork && Number(dep.airNetwork) > 0 && (
+                          <div style={{ fontSize: '14px', color: 'var(--green)', marginTop: '6px', fontWeight: 600 }}>
+                            + ${dep.airNetwork} Air Network Bonus
+                          </div>
+                        )}
                       </div>
-                      <p className="dep__amber">Copy and send the exact amount or your deposit won't be processed</p>
+                      <p className="dep__amber" style={{ marginTop: '8px' }}>
+                        Copy and send the exact amount to receive your deposit and bonus
+                      </p>
 
                       <span className="dep__sm">To This Address</span>
                       <div className="dep__box">
