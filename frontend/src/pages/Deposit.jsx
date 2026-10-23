@@ -103,9 +103,7 @@ function TronLogo({ size = 30 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" role="img">
       <circle cx="16" cy="16" r="16" fill="#EF0027" />
-      {/* main arrow body */}
       <path fill="#fff" d="M8.8 8.8 24 11.2 11.6 23.6z" />
-      {/* detached lower-left sliver */}
       <path fill="#fff" d="M8.8 8.8 6.4 13.1 10 16.6z" />
     </svg>
   );
@@ -115,7 +113,6 @@ function CryptoIcon({ symbol, size = 30 }) {
   if (symbol === "BTC") return <BitcoinLogo size={size} />;
   if (symbol === "USDT") return <TetherLogo size={size} />;
   if (symbol === "TRX") return <TronLogo size={size} />;
-  // Fallback text badge for anything without a real logo
   return (
     <span className="dep__coin" style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}>
       {String(symbol).slice(0, 3)}
@@ -152,7 +149,7 @@ const css = `
   --mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 88px 24px 48px;
+  padding: 32px 24px 48px;
   color: var(--strong);
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   box-sizing: border-box;
@@ -204,14 +201,22 @@ const css = `
 .dep__amt:focus-within { border: 2px solid var(--blue); padding: 0 17px; }
 .dep__amt input { flex: 1; min-width: 0; height: 100%; background: none; border: 0; outline: 0; font-size: 18px; color: var(--strong); }
 .dep__amt input::placeholder { color: #5d6685; }
-.dep__hint { margin: 10px 0 24px; color: var(--text); font-size: 13px; }
+.dep__hint { margin: 10px 0 14px; color: var(--text); font-size: 13px; }
 .dep__hint--err { color: var(--red); }
-.dep__chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+.dep__chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
 .dep__chips button {
   height: 44px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg);
   font-size: 16px; font-weight: 700; color: var(--strong);
 }
 .dep__chips button:hover { border-color: var(--blue-border); color: var(--blue); }
+
+.dep__bonus {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 24px;
+  border-radius: 8px; background: color-mix(in srgb, var(--green) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent); color: var(--green); font-size: 14px;
+}
+.dep__bonus b { color: var(--strong); font-weight: 700; }
+
 .dep__err { margin: 0 0 14px; color: var(--red); font-size: 14px; }
 .dep__note { margin-bottom: 18px; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid; }
 .dep__note--ok { color: var(--green); background: color-mix(in srgb, var(--green) 10%, transparent); border-color: color-mix(in srgb, var(--green) 30%, transparent); }
@@ -295,11 +300,12 @@ const css = `
 .dep__r3 { margin-top: 10px; color: #c3c9e0; font-size: 14px; }
 
 @media (max-width: 900px) {
-  .dep { padding: 76px 14px 32px; }
+  .dep { padding: 16px 14px 32px; }
   .dep__cols { grid-template-columns: 1fr; }
   .dep__card { padding: 22px; }
 }
 @media (max-width: 480px) {
+  .dep__head { margin-bottom: 18px; }
   .dep__card { padding: 16px; }
   .dep__steps i { width: 24px; }
   .dep__pair { grid-template-columns: 1fr; }
@@ -423,6 +429,10 @@ export default function Deposit() {
   };
 
   const amountOk = Number(amount) >= MIN;
+  
+  // Air Network Bonus: $1 for every $50 deposited
+  const airNetworkBonus = amountOk ? (Number(amount) / 50).toFixed(2) : "0.00";
+
   const coinInfo = COINS.find((c) => c.s === coin);
   const coinItems = COINS.map((c) => ({ key: c.s, icon: c.s, title: c.s, sub: c.n }));
   const netItems = (coinInfo?.nets || []).map((k) => ({ key: k, icon: NETS[k].icon, title: NETS[k].label }));
@@ -443,7 +453,6 @@ export default function Deposit() {
     setErr("");
     const n = NETS[net];
     if (!coinInfo || !n) return;
-    // Only allow known (coin, network) pairs.
     const okPair =
       (coinInfo.s === "USDT" && net === "TRC20") ||
       (coinInfo.s === "BTC" && net === "BTC");
@@ -462,6 +471,7 @@ export default function Deposit() {
       network: net,
       address: n.address,
       amount: coinAmt,
+      airNetwork: (usd / 50).toFixed(2), // Store bonus in record
       status: "pending",
       expires,
       created: new Date().toISOString(),
@@ -565,6 +575,14 @@ export default function Deposit() {
                     <button key={c} type="button" onClick={() => setAmount(String(c))}>${c}</button>
                   ))}
                 </div>
+
+                {amountOk && (
+                  <div className="dep__bonus">
+                    <Svg size={18}>{I.okCircle}</Svg>
+                    <span>Earns <b>${airNetworkBonus}</b> Air Network Bonus</span>
+                  </div>
+                )}
+
                 {err && <p className="dep__err">{err}</p>}
                 <button className="dep__btn dep__btn--primary dep__btn--full" disabled={!amountOk} onClick={next}>
                   Continue
@@ -716,7 +734,7 @@ export default function Deposit() {
                       </span>
                       <span>{fmtDate(d.created)}</span>
                     </div>
-                    <div className="dep__r3">{d.amount} {d.symbol}</div>
+                    <div className="dep__r3">{d.amount} {d.symbol} {d.airNetwork && `(+ $${d.airNetwork} Air Network)`}</div>
                   </article>
                 );
               })}
