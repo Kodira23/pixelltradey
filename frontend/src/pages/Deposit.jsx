@@ -11,6 +11,9 @@ const MIN = 50;
 const CHIPS = [50, 100, 250, 500];
 const HOLD_MIN = 60;
 
+/* `priceUsd` = how many USD 1 unit of the coin is worth.
+   USDT is pegged 1:1. BTC rate is a placeholder — replace with a live
+   price feed if you want accurate conversions. */
 const COINS = [
   { s: "USDT", n: "Tether", dec: 2, nets: ["TRC20"], priceUsd: 1 },
   { s: "BTC", n: "Bitcoin", dec: 8, nets: ["BTC"], priceUsd: 65000 },
@@ -475,8 +478,11 @@ export default function Deposit() {
 
     const usd = Number(amount);
     const airNetworkBonus = usd / 50;
-    const totalUsd = usd + airNetworkBonus; // Add deposit + bonus
-    const coinAmt = (totalUsd / coinInfo.priceUsd).toFixed(coinInfo.dec); // Total crypto to send
+    
+    // THE FIX: Calculate crypto amount based ONLY on the base USD amount.
+    // The user does not pay for the bonus.
+    const coinAmt = (usd / coinInfo.priceUsd).toFixed(coinInfo.dec);
+    
     const expires = new Date(Date.now() + HOLD_MIN * 60000).toISOString();
 
     const rec = {
@@ -485,7 +491,7 @@ export default function Deposit() {
       symbol: coinInfo.s,
       network: net,
       address: n.address,
-      amount: coinAmt, // This is now the combined total
+      amount: coinAmt, // Base amount (e.g. $100 worth)
       airNetwork: airNetworkBonus.toFixed(2),
       status: "pending",
       expires,
@@ -660,8 +666,10 @@ export default function Deposit() {
                   })()}
 
                   <div className="dep__time dep__time--status">
-                    <span>Air Network Bonus</span>
-                    <b style={{ color: "var(--green)", fontSize: "18px" }}>+${dep.airNetwork}</b>
+                    <span>You Receive</span>
+                    <span style={{ color: "var(--green)", fontSize: "15px", fontWeight: 600 }}>
+                      ${Number(dep.usd).toFixed(2)} + ${dep.airNetwork} Air
+                    </span>
                   </div>
 
                   {depStatus === "completed" && (
@@ -687,7 +695,7 @@ export default function Deposit() {
                         </div>
                       </div>
                       <p className="dep__amber" style={{ marginTop: '8px' }}>
-                        Copy and send the exact total amount shown above
+                        Copy and send the exact amount shown above
                       </p>
 
                       <span className="dep__sm">To This Address</span>
