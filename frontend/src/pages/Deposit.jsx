@@ -1,5 +1,4 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { supabase } from "../lib/supabase";
 
 /* ------------------------------------------------------------------
    EDIT THIS: your real USDT (TRC20) receiving address.
@@ -162,7 +161,6 @@ const css = `
 }
 .dep .dep__btn--full { width: 100%; }
 .dep .dep__btn--primary { background: var(--blue); color: #fff; border: 0; }
-/* grey when disabled so blue always means "you can click this" */
 .dep .dep__btn--primary:disabled { background: var(--surface-2); color: #5d6685; cursor: not-allowed; opacity: 1; }
 .dep .dep__btn--primary:not(:disabled):hover { filter: brightness(1.08); }
 .dep .dep__btn--ghost { background: var(--bg); border: 1px solid var(--border); color: var(--strong); }
@@ -259,19 +257,6 @@ const fmtUsd = (n) =>
 const mmss = (s) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-const normStatus = (s) => (s === "approved" || s === "confirmed" ? "completed" : s || "pending");
-const fromRow = (r) => ({
-  id: r.id,
-  usd: r.usd_amount,
-  symbol: r.symbol || "USDT",
-  network: r.network || "TRC20",
-  address: r.address || "",
-  amount: r.crypto_amount,
-  status: normStatus(r.status),
-  expires: r.expires_at,
-  created: r.created_at,
-});
-
 function Coin({ label, size = 30 }) {
   return (
     <span className="dep__coin" style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}>
@@ -342,8 +327,7 @@ function Dropdown({ selected, placeholder, items, onPick }) {
    Component
 ------------------------------------------------------------------- */
 export default function Deposit() {
-  const [userId, setUserId] = useState(null);
-  const [balance, setBalance] = useState(0);
+  const [balance] = useState(0);
 
   const [step, setStep] = useState(1);
   const [amount, setAmount] = useState("");
@@ -370,36 +354,6 @@ export default function Deposit() {
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, []);
-
-  async function loadBalance(uid) {
-    const { data } = await supabase.from("profiles").select("balance").eq("id", uid).single();
-    if (data) setBalance(Number(data.balance) || 0);
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
-        setUserId(user.id);
-        loadBalance(user.id);
-        const { data, error } = await supabase
-          .from("deposits")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        if (!cancelled) setHistory((data || []).map(fromRow));
-      } catch (e) {
-        console.error("Failed to load deposits:", e.message);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const showNote = (type, text) => {
@@ -434,41 +388,33 @@ export default function Deposit() {
     setStep(2);
   };
 
-  const generate = async () => {
+  const generate = () => {
     setErr("");
     const n = NETS[net];
     if (!coinInfo || !n) return;
     if (coinInfo.s !== "USDT" || net !== "TRC20") {
       return setErr("Only USDT on the Tron (TRC20) network is accepted.");
     }
-    if (!userId) return setErr("You need to be signed in.");
     setBusy(true);
 
     const usd = Number(amount);
     const coinAmt = usd.toFixed(coinInfo.dec); // USDT is 1:1 with USD
     const expires = new Date(Date.now() + HOLD_MIN * 60000).toISOString();
 
-    const { data, error } = await supabase
-      .from("deposits")
-      .insert({
-        user_id: userId,
-        usd_amount: usd,
-        symbol: coinInfo.s,
-        network: net,
-        address: n.address,
-        crypto_amount: coinAmt,
-        status: "pending",
-        expires_at: expires,
-      })
-      .select()
-      .single();
+    // No backend: build the deposit record locally
+    const rec = {
+      id: `local-${Date.now()}`,
+      usd,
+      symbol: coinInfo.s,
+      network: net,
+      address: n.address,
+      amount: coinAmt,
+      status: "pending",
+      expires,
+      created: new Date().toISOString(),
+    };
 
     setBusy(false);
-    if (error || !data) {
-      console.error("Deposit insert failed:", error);
-      return setErr(`Could not create the deposit${error?.message ? `: ${error.message}` : ""}`);
-    }
-    const rec = fromRow(data);
     setDep(rec);
     setHistory((h) => [rec, ...h]);
     setStep(3);
@@ -490,19 +436,14 @@ export default function Deposit() {
   const depStatus = dep ? statusOf(dep) : "";
   const depLive = depStatus === "pending";
 
-  const checkStatus = async () => {
+  const checkStatus = () => {
     if (!dep) return;
     setChecking(true);
-    let status = dep.status;
-    const { data } = await supabase.from("deposits").select("status").eq("id", dep.id).single();
-    if (data?.status) status = normStatus(data.status);
-    const updated = { ...dep, status };
-    setDep(updated);
-    setHistory((h) => h.map((x) => (x.id === dep.id ? { ...x, status } : x)));
-    if (userId) await loadBalance(userId);
+
+    // No backend to poll — only the local expiry timer can change the status
     setChecking(false);
 
-    const s = statusOf(updated);
+    const s = statusOf(dep);
     if (s === "completed") showNote("ok", "Payment received. Your balance is updated.");
     else if (s === "expired") showNote("err", "This deposit expired. Start a new deposit.");
     else if (s === "failed") showNote("err", "This deposit failed. Start a new deposit.");
