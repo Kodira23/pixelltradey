@@ -1,22 +1,41 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 
 /* ------------------------------------------------------------------
-   EDIT THIS: your real USDT (TRC20) receiving address.
-   Only USDT on TRON (TRC20) is accepted.
+   EDIT THIS: your real receiving addresses.
+   USDT is accepted on Tron (TRC20). BTC on the Bitcoin network.
 ------------------------------------------------------------------- */
-const DEPOSIT_ADDRESS = "YOUR_USDT_TRC20_ADDRESS";
+const DEPOSIT_ADDRESS_USDT = "YOUR_USDT_TRC20_ADDRESS";
+const DEPOSIT_ADDRESS_BTC = "YOUR_BTC_ADDRESS";
 
 const MIN = 50;
 const CHIPS = [50, 100, 250, 500];
 const HOLD_MIN = 60;
 
-const COINS = [{ s: "USDT", n: "Tether", dec: 2, nets: ["TRC20"] }];
+/* `priceUsd` = how many USD 1 unit of the coin is worth.
+   USDT is pegged 1:1. BTC rate is a placeholder — replace with a live
+   price feed if you want accurate conversions. */
+const COINS = [
+  { s: "USDT", n: "Tether", dec: 2, nets: ["TRC20"], priceUsd: 1 },
+  { s: "BTC", n: "Bitcoin", dec: 8, nets: ["BTC"], priceUsd: 65000 },
+];
+
 const NETS = {
-  TRC20: { label: "Tron (TRC20) - Low Fee", icon: "TRX", address: DEPOSIT_ADDRESS },
+  TRC20: {
+    label: "Tron (TRC20) - Low Fee",
+    shortLabel: "Tron (TRC20)",
+    icon: "TRX",
+    address: DEPOSIT_ADDRESS_USDT,
+  },
+  BTC: {
+    label: "Bitcoin (BTC)",
+    shortLabel: "Bitcoin",
+    icon: "BTC",
+    address: DEPOSIT_ADDRESS_BTC,
+  },
 };
 
 /* ------------------------------------------------------------------
-   Icons (inline SVG, no extra package needed)
+   Icons
 ------------------------------------------------------------------- */
 function Svg({ size = 18, className, children }) {
   return (
@@ -55,6 +74,42 @@ const I = {
   loader: <path d="M21 12a9 9 0 1 1-6.219-8.56" />,
 };
 
+/* Real brand logos for the crypto icons (inline, no dependency). */
+function BitcoinLogo({ size = 30 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" role="img">
+      <circle cx="16" cy="16" r="16" fill="#F7931A" />
+      <path
+        fill="#fff"
+        d="M22.55 14.02c.3-2.02-1.24-3.11-3.35-3.83l.68-2.74-1.67-.42-.67 2.67c-.44-.11-.89-.21-1.34-.31l.67-2.69-1.67-.42-.68 2.74c-.36-.08-.72-.17-1.07-.25l-2.3-.58-.44 1.79s1.24.28 1.21.3c.67.17.8.61.78.97l-.78 3.13.19.05-.19-.05-1.09 4.38c-.08.21-.29.52-.76.4.02.03-1.21-.3-1.21-.3l-.83 1.91 2.17.54c.4.1.8.21 1.19.31l-.69 2.77 1.67.42.68-2.74c.45.12.89.23 1.32.34l-.68 2.72 1.67.42.69-2.77c2.85.54 4.99.32 5.89-2.26.72-2.07-.04-3.27-1.54-4.05 1.09-.25 1.91-1 2.13-2.42zm-3.85 5.36c-.52 2.07-4.02.95-5.16.67l.92-3.69c1.14.28 4.79.85 4.24 3.02zm.52-5.39c-.47 1.88-3.38.93-4.33.69l.83-3.35c.95.24 4.01.68 3.5 2.66z"
+      />
+    </svg>
+  );
+}
+
+function TetherLogo({ size = 30 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" role="img">
+      <circle cx="16" cy="16" r="16" fill="#26A17B" />
+      <path
+        fill="#fff"
+        d="M22.36 10.63v-2.4H9.62v2.4h4.87v9.1c.06 1.37 1.46 2.45 3.5 2.45s3.44-1.08 3.5-2.45v-9.1h4.87zm-4.87 9.13c-.04.75-.93 1.34-2 1.34s-1.96-.59-2-1.34v-9.13h4v9.13zm0-9.13v-2.4h-4v2.4h4z"
+      />
+    </svg>
+  );
+}
+
+function CryptoIcon({ symbol, size = 30 }) {
+  if (symbol === "BTC") return <BitcoinLogo size={size} />;
+  if (symbol === "USDT") return <TetherLogo size={size} />;
+  // Fallback text badge for anything without a real logo (e.g. TRX network)
+  return (
+    <span className="dep__coin" style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}>
+      {String(symbol).slice(0, 3)}
+    </span>
+  );
+}
+
 // [label, tone, icon, spin?]
 const BADGE = {
   expired: ["Expired", "red", I.xCircle],
@@ -64,7 +119,7 @@ const BADGE = {
 };
 
 /* ------------------------------------------------------------------
-   Styles (navy + blue accent, layout matched to the new design)
+   Styles
 ------------------------------------------------------------------- */
 const css = `
 .dep {
@@ -96,7 +151,6 @@ const css = `
 @keyframes dep-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .dep__spin { animation-duration: 3s; } }
 
-/* header */
 .dep__head { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
 .dep__tile {
   display: grid; place-items: center; width: 48px; height: 48px; flex: none;
@@ -105,13 +159,11 @@ const css = `
 .dep__head h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; color: var(--strong); }
 .dep__head p { margin: 2px 0 0; color: var(--text); font-size: 14px; }
 
-/* layout */
 .dep__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
 .dep__card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 28px; min-width: 0; }
 .dep__h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 26px; font-size: 24px; font-weight: 700; letter-spacing: -0.04em; color: var(--strong); }
 .dep__h2 svg { color: var(--blue); }
 
-/* balance + steps */
 .dep__bal {
   display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 18px;
   border-radius: 12px; background: var(--surface-2); color: var(--text); font-size: 16px;
@@ -126,7 +178,6 @@ const css = `
 .dep__steps i { width: 38px; height: 2px; background: var(--border); }
 .dep__steps i.on { background: var(--blue); }
 
-/* body */
 .dep__body { display: flex; flex-direction: column; }
 .dep__intro { text-align: center; margin-bottom: 26px; }
 .dep__intro h3 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--strong); }
@@ -154,7 +205,6 @@ const css = `
 .dep__note--err { color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); border-color: color-mix(in srgb, var(--red) 30%, transparent); }
 .dep__note--info { color: var(--strong); background: var(--blue-bg); border-color: var(--blue-border); }
 
-/* buttons */
 .dep .dep__btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 12px; height: 54px; padding: 0 22px;
   border-radius: 10px; font-size: 16px; font-weight: 600;
@@ -169,7 +219,6 @@ const css = `
 .dep__pay + .dep__imp { margin-top: 18px; }
 .dep__imp + .dep__pair, .dep__pay + .dep__pair { margin-top: 18px; }
 
-/* coin icon + dropdown */
 .dep__coin {
   display: inline-grid; place-items: center; flex: none; border-radius: 50%;
   font-weight: 700; color: var(--blue); background: var(--blue-bg); border: 1px solid var(--blue-border);
@@ -193,7 +242,6 @@ const css = `
 .dep__menu .dep__opt:hover { background: var(--bg); }
 .dep__menu .dep__opt.is-on { background: var(--blue-bg); }
 
-/* payment step */
 .dep__pay { display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); }
 .dep__time { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; color: var(--text); font-size: 15px; }
 .dep__time b { color: var(--amber); font-family: var(--mono); font-size: 20px; font-weight: 700; }
@@ -217,7 +265,6 @@ const css = `
 .dep__imp b { display: block; font-size: 16px; font-weight: 600; }
 .dep__imp p { margin: 2px 0 0; color: var(--text); font-size: 14px; line-height: 1.45; }
 
-/* badges + history */
 .dep__badge { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 14px; white-space: nowrap; }
 .dep__badge.red { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
 .dep__badge.amber { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
@@ -257,14 +304,6 @@ const fmtUsd = (n) =>
 const mmss = (s) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-function Coin({ label, size = 30 }) {
-  return (
-    <span className="dep__coin" style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }}>
-      {label === "USDT" ? "₮" : label.slice(0, 3)}
-    </span>
-  );
-}
-
 function Dropdown({ selected, placeholder, items, onPick }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -289,7 +328,7 @@ function Dropdown({ selected, placeholder, items, onPick }) {
       >
         {cur ? (
           <span className="dep__opt">
-            <Coin label={cur.icon} />
+            <CryptoIcon symbol={cur.icon} />
             <b>{cur.title}</b>
             {cur.sub && <small>{cur.sub}</small>}
           </span>
@@ -312,7 +351,7 @@ function Dropdown({ selected, placeholder, items, onPick }) {
                 setOpen(false);
               }}
             >
-              <Coin label={i.icon} />
+              <CryptoIcon symbol={i.icon} />
               <b>{i.title}</b>
               {i.sub && <small>{i.sub}</small>}
             </button>
@@ -342,7 +381,6 @@ export default function Deposit() {
   const [copied, setCopied] = useState("");
   const [checking, setChecking] = useState(false);
 
-  // Match the navbar background on this page only; restore on leave
   useEffect(() => {
     const prev = document.body.style.background;
     document.body.style.background = "#0a0e1a";
@@ -392,16 +430,18 @@ export default function Deposit() {
     setErr("");
     const n = NETS[net];
     if (!coinInfo || !n) return;
-    if (coinInfo.s !== "USDT" || net !== "TRC20") {
-      return setErr("Only USDT on the Tron (TRC20) network is accepted.");
-    }
+    // Only allow known (coin, network) pairs.
+    const okPair =
+      (coinInfo.s === "USDT" && net === "TRC20") ||
+      (coinInfo.s === "BTC" && net === "BTC");
+    if (!okPair) return setErr("Selected coin is not supported on this network.");
+
     setBusy(true);
 
     const usd = Number(amount);
-    const coinAmt = usd.toFixed(coinInfo.dec); // USDT is 1:1 with USD
+    const coinAmt = (usd / coinInfo.priceUsd).toFixed(coinInfo.dec);
     const expires = new Date(Date.now() + HOLD_MIN * 60000).toISOString();
 
-    // No backend: build the deposit record locally
     const rec = {
       id: `local-${Date.now()}`,
       usd,
@@ -439,8 +479,6 @@ export default function Deposit() {
   const checkStatus = () => {
     if (!dep) return;
     setChecking(true);
-
-    // No backend to poll — only the local expiry timer can change the status
     setChecking(false);
 
     const s = statusOf(dep);
@@ -460,7 +498,7 @@ export default function Deposit() {
           </span>
           <div>
             <h1>Deposit Crypto</h1>
-            <p>Deposit cryptocurrency to fund your account</p>
+            <p>Deposit USDT (TRC20) or Bitcoin (BTC) to fund your account</p>
           </div>
         </header>
 
@@ -614,8 +652,8 @@ export default function Deposit() {
                     <div>
                       <b>Important</b>
                       <p>
-                        Send only {dep.symbol} on the {NETS[dep.network]?.label || dep.network} network. Sending any
-                        other cryptocurrency may result in permanent loss.
+                        Send only {dep.symbol} on the {NETS[dep.network]?.shortLabel || dep.network} network. Sending
+                        any other cryptocurrency may result in permanent loss.
                       </p>
                     </div>
                   </div>
@@ -649,7 +687,7 @@ export default function Deposit() {
                   <article className="dep__item" key={d.id}>
                     <div className="dep__r1">
                       <span>
-                        <Coin label={d.symbol} size={24} />
+                        <CryptoIcon symbol={d.symbol} size={24} />
                         <b>{fmtUsd(d.usd)}</b>
                       </span>
                       <span className={`dep__badge ${tone}`}>
