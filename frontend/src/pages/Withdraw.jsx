@@ -1,16 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-const ASSETS = [
-  { id: "USDT", network: "TRC20", min: 20, fee: 1 },
-  { id: "BTC", network: "Bitcoin", min: 50, fee: 5 },
-  { id: "ETH", network: "ERC20", min: 30, fee: 3 },
+const COINS = [
+  {
+    id: "USDT",
+    name: "Tether",
+    color: "#26a17b",
+    glyph: "T",
+    min: 20,
+    networks: [{ id: "TRC20", label: "Tron (TRC20)", fee: 1 }],
+  },
+  {
+    id: "BTC",
+    name: "Bitcoin",
+    color: "#f7931a",
+    glyph: "₿",
+    min: 50,
+    networks: [{ id: "Bitcoin", label: "Bitcoin", fee: 5 }],
+  },
+  {
+    id: "ETH",
+    name: "Ethereum",
+    color: "#627eea",
+    glyph: "Ξ",
+    min: 30,
+    networks: [{ id: "ERC20", label: "Ethereum (ERC20)", fee: 3 }],
+  },
 ];
 
 const css = `
 .wd {
   --bg: #0a0e1a;
   --surface: #121a2e;
+  --panel: #0f1629;
   --border: #1f2842;
   --text: #8a93b3;
   --strong: #f2f4ff;
@@ -20,80 +42,175 @@ const css = `
   --green: #1fd18b;
   --red: #ff3b4e;
   --amber: #f5b13d;
-  max-width: 1040px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 88px 24px 48px;
-  color: var(--text);
+  color: var(--strong);
   box-sizing: border-box;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 .wd *, .wd *::before, .wd *::after { box-sizing: border-box; }
-.wd h1 { margin: 0 0 6px; font-size: 26px; font-weight: 700; color: var(--strong); }
-.wd__sub { margin: 0 0 24px; font-size: 14px; }
-.wd__grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; align-items: start; }
-.wd__card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-.wd__card h2 { margin: 0 0 14px; font-size: 15px; font-weight: 600; color: var(--strong); }
-.wd__label { display: block; margin: 16px 0 8px; font-size: 12px; font-weight: 500; }
-.wd__label:first-of-type { margin-top: 0; }
-.wd__assets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.wd__asset {
-  padding: 10px 12px; text-align: left; font-family: inherit;
-  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text); cursor: pointer; transition: border-color .15s;
+
+/* ---------- header ---------- */
+.wd__head { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+.wd__head-icon {
+  width: 48px; height: 48px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 12px; color: var(--blue); background: var(--blue-bg);
+  border: 1px solid var(--blue-border);
 }
-.wd__asset strong { display: block; font-size: 14px; color: var(--strong); }
-.wd__asset span { font-size: 11px; }
-.wd__asset:hover { border-color: #2f3a5c; }
-.wd__asset.is-on { border-color: var(--blue-border); background: var(--blue-bg); }
-.wd__asset.is-on strong { color: var(--blue); }
-.wd__input {
-  width: 100%; height: 42px; padding: 0 14px; font-family: inherit; font-size: 14px;
-  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-  color: var(--strong); outline: none; transition: border-color .15s;
+.wd__head-icon svg { width: 20px; height: 20px; }
+.wd__title { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; color: var(--strong); }
+.wd__sub { margin: 2px 0 0; font-size: 14px; color: var(--text); }
+
+.wd__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+
+/* ---------- cards ---------- */
+.wd-card { padding: 28px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+.wd-card__title {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 20px;
+  font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--strong);
 }
-.wd__input:focus { border-color: var(--blue-border); }
-.wd__input::placeholder { color: var(--text); }
-.wd__amount { position: relative; }
-.wd__amount .wd__input { padding-right: 64px; }
-.wd__max {
-  position: absolute; top: 5px; right: 5px; height: 32px; padding: 0 12px;
+.wd-card__title svg { flex-shrink: 0; width: 20px; height: 20px; color: var(--blue); }
+
+.wd-balance {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 62px; padding: 0 16px; border-radius: 12px; background: var(--panel);
+  margin-bottom: 22px; color: var(--text); font-size: 15px;
+}
+.wd-balance strong { color: var(--strong); font-size: 22px; font-weight: 700; }
+.wd-held { margin: -12px 0 22px; font-size: 13px; color: var(--text); }
+.wd-held b { color: var(--amber); font-weight: 600; }
+
+/* ---------- form ---------- */
+.wd-form { display: flex; flex-direction: column; }
+.wd-label { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--strong); }
+.wd-form > * + .wd-label { margin-top: 20px; }
+
+.wd-input {
+  width: 100%; height: 46px; padding: 0 14px; border-radius: 10px; outline: 0;
+  font: inherit; font-size: 16px; color: var(--strong);
+  background: var(--bg); border: 1px solid var(--border); transition: border-color .15s;
+}
+.wd-input::placeholder { color: #566086; }
+.wd-input:focus { border-color: var(--blue); }
+.wd-input--amount { padding-left: 34px; padding-right: 72px; font-size: 18px; }
+.wd-input--amount::-webkit-outer-spin-button,
+.wd-input--amount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.wd-input--amount { -moz-appearance: textfield; }
+
+.wd-amount { position: relative; }
+.wd-amount__sign {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 20px; color: var(--text); pointer-events: none;
+}
+.wd-max {
+  position: absolute; top: 7px; right: 7px; height: 32px; padding: 0 12px;
   font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
   color: var(--blue); background: var(--blue-bg); border: 1px solid var(--blue-border); border-radius: 6px;
 }
-.wd__btn {
-  width: 100%; height: 42px; margin-top: 18px; font-family: inherit; font-size: 14px; font-weight: 600;
-  color: #fff; background: var(--blue); border: 1px solid var(--blue); border-radius: 8px;
-  cursor: pointer; transition: opacity .15s;
+.wd-hint { margin: 10px 0 0; font-size: 13px; color: var(--text); }
+
+/* ---------- dropdowns ---------- */
+.wd-select { position: relative; }
+.wd-select__btn {
+  width: 100%; height: 58px; display: flex; align-items: center; padding: 0 16px; gap: 10px;
+  border-radius: 12px; cursor: pointer; text-align: left; font: inherit; color: var(--strong);
+  background: var(--bg); border: 1px solid var(--border); transition: border-color .15s;
 }
-.wd__btn:hover { opacity: .9; }
-.wd__btn:disabled { opacity: .5; cursor: not-allowed; }
-.wd__bal { font-size: 28px; font-weight: 700; color: var(--strong); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.wd__line { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: 13px; border-top: 1px solid var(--border); }
-.wd__line:first-of-type { border-top: 0; }
-.wd__line b { color: var(--strong); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.wd__note { margin: 14px 0 0; padding: 10px 12px; font-size: 12px; line-height: 1.5; border-radius: 8px; background: var(--blue-bg); border: 1px solid var(--blue-border); }
-.wd__msg { margin-top: 14px; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid; }
-.wd__msg--ok { color: var(--green); border-color: color-mix(in srgb, var(--green) 35%, transparent); background: color-mix(in srgb, var(--green) 10%, transparent); }
-.wd__msg--err { color: var(--red); border-color: color-mix(in srgb, var(--red) 35%, transparent); background: color-mix(in srgb, var(--red) 10%, transparent); }
-.wd__hist { margin-top: 20px; }
-.wd__row { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); font-size: 13px; }
-.wd__row:first-of-type { border-top: 0; }
-.wd__row b { display: block; color: var(--strong); font-weight: 600; }
-.wd__row small { font-size: 11px; overflow-wrap: anywhere; }
-.wd__amt { color: var(--strong); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.wd__pill { padding: 3px 10px; font-size: 11px; font-weight: 600; border-radius: 999px; text-transform: capitalize; }
-.wd__pill--pending { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
-.wd__pill--approved, .wd__pill--completed, .wd__pill--confirmed { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
-.wd__pill--rejected, .wd__pill--failed { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
-.wd__empty { padding: 20px 0 6px; font-size: 13px; text-align: center; }
+.wd-select__btn:hover { border-color: #2f3a5c; }
+.wd-select__btn.is-open { border-color: var(--blue-border); }
+.wd-select__placeholder { font-size: 16px; color: var(--text); }
+.wd-select__chev { margin-left: auto; display: grid; place-items: center; color: var(--strong); transition: transform .15s; }
+.wd-select__chev svg { width: 16px; height: 16px; }
+.wd-select__btn.is-open .wd-select__chev { transform: rotate(180deg); }
+
+.wd-select__menu {
+  position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0; margin: 0; padding: 6px;
+  list-style: none; border-radius: 12px; background: #0e1424; border: 1px solid var(--border);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+}
+.wd-select__item {
+  width: 100%; height: 48px; display: flex; align-items: center; padding: 0 10px;
+  border: 0; border-radius: 8px; cursor: pointer; font: inherit; color: var(--strong);
+  background: transparent; text-align: left;
+}
+.wd-select__item:hover { background: #18213a; }
+.wd-select__item.is-on { background: var(--blue-bg); }
+
+.wd-opt { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.wd-opt__main { font-size: 16px; font-weight: 600; }
+.wd-opt__muted { font-size: 14px; color: var(--text); }
+
+.wd-coin {
+  width: 28px; height: 28px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 50%; color: #fff; font-size: 15px; font-weight: 700;
+}
+.wd-net {
+  width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 50%; color: var(--blue); background: var(--blue-bg);
+}
+.wd-net svg { width: 14px; height: 14px; }
+
+/* ---------- fee summary ---------- */
+.wd-summary { margin-top: 20px; padding: 16px; border-radius: 12px; background: var(--panel); }
+.wd-summary__row { display: flex; align-items: center; justify-content: space-between; font-size: 16px; color: var(--text); }
+.wd-summary__row b { color: var(--strong); font-weight: 600; }
+.wd-summary__row--total { margin-top: 10px; color: var(--strong); font-weight: 600; }
+.wd-summary__row--total b { color: var(--blue); font-size: 17px; font-weight: 700; }
+
+.wd-note {
+  margin: 16px 0 0; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--text);
+  border-radius: 8px; background: var(--blue-bg); border: 1px solid var(--blue-border);
+}
+
+/* ---------- submit + messages ---------- */
+.wd-submit {
+  margin-top: 22px; width: 100%; height: 46px; border: 0; border-radius: 8px; cursor: pointer;
+  font: inherit; font-size: 16px; font-weight: 600; color: #fff; background: var(--blue);
+  transition: filter .15s;
+}
+.wd-submit:hover:not(:disabled) { filter: brightness(1.1); }
+.wd-submit:disabled { opacity: .55; cursor: not-allowed; }
+
+.wd-msg { margin-top: 14px; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid; }
+.wd-msg--ok { color: var(--green); border-color: color-mix(in srgb, var(--green) 35%, transparent); background: color-mix(in srgb, var(--green) 10%, transparent); }
+.wd-msg--err { color: var(--red); border-color: color-mix(in srgb, var(--red) 35%, transparent); background: color-mix(in srgb, var(--red) 10%, transparent); }
+
+/* ---------- history ---------- */
+.wd-empty { display: flex; flex-direction: column; align-items: center; padding: 44px 0 30px; color: var(--text); }
+.wd-empty__icon { color: #3a4468; margin-bottom: 16px; }
+.wd-empty__icon svg { width: 40px; height: 40px; }
+.wd-empty p { margin: 0; font-size: 14px; text-align: center; }
+
+.wd-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.wd-history__item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; border-radius: 12px; background: var(--panel);
+}
+.wd-history__amt { font-size: 18px; font-weight: 700; color: var(--strong); }
+.wd-history__amt span { margin-left: 8px; font-size: 14px; font-weight: 500; color: var(--text); }
+.wd-history__meta { margin-top: 3px; font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+
+.wd-status {
+  padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; text-transform: capitalize;
+  color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent);
+}
+.wd-status--approved, .wd-status--completed, .wd-status--confirmed {
+  color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+.wd-status--rejected, .wd-status--failed {
+  color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent);
+}
+
+/* ---------- responsive ---------- */
 @media (max-width: 860px) {
   .wd { padding: 76px 14px 32px; }
-  .wd__grid { grid-template-columns: 1fr; }
+  .wd__grid { grid-template-columns: 1fr; gap: 20px; }
 }
-@media (max-width: 420px) {
-  .wd__assets { grid-template-columns: 1fr; }
-  .wd__row { grid-template-columns: 1fr auto; }
-  .wd__row .wd__pill { grid-column: 2; grid-row: 1; }
-  .wd__row .wd__amt { grid-column: 1; }
+@media (max-width: 560px) {
+  .wd__head { margin-bottom: 20px; }
+  .wd__head-icon { width: 42px; height: 42px; }
+  .wd-card { padding: 20px; }
 }
 `;
 
@@ -101,8 +218,96 @@ const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (d) =>
   new Date(d).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
+/* ---------- icons ---------- */
+const WalletIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 7H5a2 2 0 0 1 0-4h13v4" />
+    <path d="M3 5v14a2 2 0 0 0 2 2h15V7" />
+    <path d="M16 14h4" />
+  </svg>
+);
+const ClockIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 6v6l4 2" />
+  </svg>
+);
+const ArrowDownLeft = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 7 7 17" />
+    <path d="M17 17H7V7" />
+  </svg>
+);
+const Chevron = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+);
+const NetworkIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 4l9 17L21 4z" />
+    <path d="M8 8l4 5 4-5" />
+  </svg>
+);
+
+const CoinBadge = ({ coin }) => (
+  <span className="wd-coin" style={{ background: coin.color }}>{coin.glyph}</span>
+);
+
+/* ---------- custom dropdown ---------- */
+function Dropdown({ value, options, placeholder, onChange, renderOption }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = options.find((o) => o.id === value);
+
+  useEffect(() => {
+    const close = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  return (
+    <div className="wd-select" ref={ref}>
+      <button
+        type="button"
+        className={`wd-select__btn ${open ? "is-open" : ""}`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {selected ? (
+          renderOption(selected)
+        ) : (
+          <span className="wd-select__placeholder">{placeholder}</span>
+        )}
+        <span className="wd-select__chev"><Chevron /></span>
+      </button>
+      {open && (
+        <ul className="wd-select__menu">
+          {options.map((o) => (
+            <li key={o.id}>
+              <button
+                type="button"
+                className={`wd-select__item ${o.id === value ? "is-on" : ""}`}
+                onClick={() => {
+                  onChange(o.id);
+                  setOpen(false);
+                }}
+              >
+                {renderOption(o)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ---------- page ---------- */
 export default function Withdraw() {
-  const [asset, setAsset] = useState(ASSETS[0]);
+  const [coinId, setCoinId] = useState("");
+  const [networkId, setNetworkId] = useState("");
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [balance, setBalance] = useState(null);
@@ -138,23 +343,40 @@ export default function Withdraw() {
     load();
   }, []);
 
+  const coin = COINS.find((c) => c.id === coinId);
+  const networkList = coin ? coin.networks : [];
+  const network = networkList.find((n) => n.id === networkId);
+  const fee = network ? network.fee : 0;
+  const min = coin ? coin.min : 0;
+
   // pending requests are held against the balance so they can't be requested twice
   const pending = history
     .filter((w) => w.status === "pending")
     .reduce((sum, w) => sum + Number(w.amount || 0), 0);
   const available = Math.max((balance || 0) - pending, 0);
   const value = Number(amount) || 0;
-  const receive = Math.max(value - asset.fee, 0);
+  const receive = Math.max(value - fee, 0);
+
+  const changeCoin = (id) => {
+    const c = COINS.find((x) => x.id === id);
+    setCoinId(id);
+    setNetworkId(c.networks[0].id);
+    setMsg(null);
+  };
 
   async function submit(e) {
     e.preventDefault();
     setMsg(null);
+    if (!coin || !network) {
+      setMsg({ type: "err", text: "Select a currency and network." });
+      return;
+    }
     if (address.trim().length < 20) {
       setMsg({ type: "err", text: "Enter a valid wallet address." });
       return;
     }
-    if (value < asset.min) {
-      setMsg({ type: "err", text: `The minimum withdrawal is ${money(asset.min)}.` });
+    if (value < min) {
+      setMsg({ type: "err", text: `The minimum withdrawal is ${money(min)}.` });
       return;
     }
     if (value > available) {
@@ -167,11 +389,11 @@ export default function Withdraw() {
       if (!user) throw new Error("You need to be signed in.");
       const { error } = await supabase.from("withdrawals").insert({
         user_id: user.id,
-        asset: asset.id,
-        network: asset.network,
+        asset: coin.id,
+        network: network.id,
         address: address.trim(),
         amount: value,
-        fee: asset.fee,
+        fee,
         status: "pending",
       });
       if (error) throw error;
@@ -190,122 +412,157 @@ export default function Withdraw() {
     <>
       <style>{css}</style>
       <div className="wd">
-        <h1>Withdraw</h1>
-        <p className="wd__sub">Send funds from your balance to your own wallet.</p>
+        <header className="wd__head">
+          <span className="wd__head-icon"><ArrowDownLeft /></span>
+          <div>
+            <h1 className="wd__title">Withdraw Crypto</h1>
+            <p className="wd__sub">Withdraw your cryptocurrency to an external wallet</p>
+          </div>
+        </header>
 
         <div className="wd__grid">
-          <form className="wd__card" onSubmit={submit}>
-            <h2>Withdrawal details</h2>
-            <span className="wd__label">Asset</span>
-            <div className="wd__assets">
-              {ASSETS.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className={`wd__asset ${a.id === asset.id ? "is-on" : ""}`}
-                  onClick={() => setAsset(a)}
-                >
-                  <strong>{a.id}</strong>
-                  <span>{a.network}</span>
-                </button>
-              ))}
+          {/* New withdrawal */}
+          <section className="wd-card">
+            <h2 className="wd-card__title"><WalletIcon /> New Withdrawal</h2>
+
+            <div className="wd-balance">
+              <span>Available Balance</span>
+              <strong>{balance === null ? "…" : money(available)}</strong>
             </div>
+            {pending > 0 && (
+              <p className="wd-held">
+                <b>{money(pending)}</b> is held in pending requests.
+              </p>
+            )}
 
-            <label className="wd__label" htmlFor="wd-address">
-              Wallet address ({asset.network})
-            </label>
-            <input
-              id="wd-address"
-              className="wd__input"
-              type="text"
-              placeholder={`Your ${asset.id} address`}
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              autoComplete="off"
-              spellCheck="false"
-            />
-
-            <label className="wd__label" htmlFor="wd-amount">
-              Amount (USD)
-            </label>
-            <div className="wd__amount">
-              <input
-                id="wd-amount"
-                className="wd__input"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="any"
-                placeholder={`Minimum ${money(asset.min)}`}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+            <form className="wd-form" onSubmit={submit}>
+              <label className="wd-label">Select Currency</label>
+              <Dropdown
+                value={coinId}
+                options={COINS}
+                placeholder="Select a cryptocurrency"
+                onChange={changeCoin}
+                renderOption={(c) => (
+                  <span className="wd-opt">
+                    <CoinBadge coin={c} />
+                    <span className="wd-opt__main">{c.id}</span>
+                    <span className="wd-opt__muted">{c.name}</span>
+                  </span>
+                )}
               />
-              <button
-                type="button"
-                className="wd__max"
-                onClick={() => setAmount(available ? available.toFixed(2) : "")}
-              >
-                Max
-              </button>
-            </div>
 
-            <button className="wd__btn" type="submit" disabled={busy || loading}>
-              {busy ? "Submitting..." : "Request withdrawal"}
-            </button>
-            {msg && <div className={`wd__msg wd__msg--${msg.type}`}>{msg.text}</div>}
-          </form>
+              {coin && (
+                <>
+                  <label className="wd-label">Select Network</label>
+                  <Dropdown
+                    value={networkId}
+                    options={networkList}
+                    placeholder="Select a network"
+                    onChange={setNetworkId}
+                    renderOption={(n) => (
+                      <span className="wd-opt">
+                        <span className="wd-net"><NetworkIcon /></span>
+                        <span className="wd-opt__main">{n.label}</span>
+                        <span className="wd-opt__muted">Fee: ${n.fee}</span>
+                      </span>
+                    )}
+                  />
 
-          <div className="wd__card">
-            <h2>Available to withdraw</h2>
-            <div className="wd__bal">{balance === null ? "…" : money(available)}</div>
-            <div style={{ marginTop: 14 }}>
-              <div className="wd__line">
-                <span>Balance</span>
-                <b>{balance === null ? "…" : money(balance)}</b>
-              </div>
-              <div className="wd__line">
-                <span>Held in pending requests</span>
-                <b>{money(pending)}</b>
-              </div>
-              <div className="wd__line">
-                <span>Network fee</span>
-                <b>{money(asset.fee)}</b>
-              </div>
-              <div className="wd__line">
-                <span>You receive</span>
-                <b>{money(receive)}</b>
-              </div>
-            </div>
-            <p className="wd__note">
-              Double-check the address and network. Withdrawals to the wrong network can't be
-              reversed.
-            </p>
-          </div>
-        </div>
+                  <label className="wd-label" htmlFor="wd-address">Withdrawal Address</label>
+                  <input
+                    id="wd-address"
+                    className="wd-input"
+                    type="text"
+                    placeholder={`Your ${coin.id} address`}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    autoComplete="off"
+                    spellCheck="false"
+                  />
 
-        <div className="wd__card wd__hist">
-          <h2>Withdrawal history</h2>
-          {loading ? (
-            <div className="wd__empty">Loading...</div>
-          ) : history.length === 0 ? (
-            <div className="wd__empty">No withdrawals yet. Your requests will show up here.</div>
-          ) : (
-            history.map((w) => (
-              <div className="wd__row" key={w.id}>
-                <div>
-                  <b>
-                    {w.asset} {w.network ? `· ${w.network}` : ""}
-                  </b>
-                  <small>
-                    {fmtDate(w.created_at)}
-                    {w.address ? ` · ${w.address.slice(0, 8)}…${w.address.slice(-6)}` : ""}
-                  </small>
-                </div>
-                <span className="wd__amt">{money(w.amount)}</span>
-                <span className={`wd__pill wd__pill--${w.status}`}>{w.status}</span>
+                  <label className="wd-label" htmlFor="wd-amount">Amount (USD)</label>
+                  <div className="wd-amount">
+                    <span className="wd-amount__sign">$</span>
+                    <input
+                      id="wd-amount"
+                      className="wd-input wd-input--amount"
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="any"
+                      placeholder="0.00"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="wd-max"
+                      onClick={() => setAmount(available ? available.toFixed(2) : "")}
+                    >
+                      Max
+                    </button>
+                  </div>
+                  <p className="wd-hint">Minimum withdrawal: {money(min).replace(".00", "")}</p>
+
+                  <div className="wd-summary">
+                    <div className="wd-summary__row">
+                      <span>Network Fee</span>
+                      <b>${fee}</b>
+                    </div>
+                    <div className="wd-summary__row wd-summary__row--total">
+                      <span>You will receive</span>
+                      <b>{money(receive)}</b>
+                    </div>
+                  </div>
+
+                  <p className="wd-note">
+                    Double-check the address and network. Withdrawals to the wrong network can't be
+                    reversed.
+                  </p>
+
+                  <button className="wd-submit" type="submit" disabled={busy || loading}>
+                    {busy ? "Submitting…" : "Submit Withdrawal"}
+                  </button>
+                  {msg && <div className={`wd-msg wd-msg--${msg.type}`}>{msg.text}</div>}
+                </>
+              )}
+            </form>
+          </section>
+
+          {/* History */}
+          <section className="wd-card">
+            <h2 className="wd-card__title"><ClockIcon /> Withdrawal History</h2>
+
+            {loading ? (
+              <div className="wd-empty"><p>Loading...</p></div>
+            ) : history.length === 0 ? (
+              <div className="wd-empty">
+                <span className="wd-empty__icon"><ArrowDownLeft /></span>
+                <p>No withdrawal history</p>
               </div>
-            ))
-          )}
+            ) : (
+              <ul className="wd-history">
+                {history.map((w) => (
+                  <li key={w.id} className="wd-history__item">
+                    <div>
+                      <div className="wd-history__amt">
+                        {money(w.amount)}{" "}
+                        <span>
+                          {w.asset}
+                          {w.network ? ` · ${w.network}` : ""}
+                        </span>
+                      </div>
+                      <div className="wd-history__meta">
+                        {fmtDate(w.created_at)}
+                        {w.address ? ` · ${w.address.slice(0, 8)}…${w.address.slice(-6)}` : ""}
+                      </div>
+                    </div>
+                    <span className={`wd-status wd-status--${w.status}`}>{w.status}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       </div>
     </>
